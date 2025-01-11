@@ -5,9 +5,9 @@ classdef QCI_Model < handle
     properties (Access = private)
         %Initial Data
         Names                   (1,:) string = []
-        HologramsRaw            (:,:,:) double                              % Hologram image (matrix)
+        Holograms               (:,:,:) double                   = []       % Hologram image (matrix)
         Wavelengths             (1,:) double {mustBeNonnegative} = []       % Wavelength of light used [micro meters]
-        ZCoordinates            (1,:) double {mustBeNonnegative} = []       % Distance from CCD to sample [micro meters] on the optical axis
+        ZCoordinates            (1,:) double                     = []       % Distance from CCD to sample [micro meters] on the optical axis
         CameraPixelSize         (1,1) double = 1                            % Size of a pixel on the CCD camera used to obtain the hologram
         MediumRefractiveIndex   (1,1) double = 1                            % Refractive index of the medium in which the hologram was taken (assume air)
 
@@ -19,15 +19,10 @@ classdef QCI_Model < handle
         WaveNumbers             (1,:) double {mustBeNonnegative} = []       % Wavenumber in [1/micrometer = 1e6 m]
         FreeSpaceImpulseMatrixes(:,:,:) double                   = []
         HologramsFFT            (:,:,:)                          = []
-        HologramsPostPropagation(:,:,:)                          = []
-        
-        CorrectedHolograms      (:,:,:)                          = []
-        CorrectedReference      (:,:,:)                          = []
-        CorrectedZCoordinates   (1,:) double {mustBeNonnegative} = []
     end
     
     methods
-        function obj = QCI_Model(names, images, wavelengths, distances, pixelSize)
+        function obj = QCI_Model(names, holograms, wavelengths, zCoordinates, pixelSize)
             if nargin == 0
                 return
             end
@@ -35,27 +30,30 @@ classdef QCI_Model < handle
             %   Detailed explanation goes here
             %obj.Names = strings(1,length(names));
             obj.Names = names;
+            
             for i = 1:length(wavelengths)
-                obj.HologramsRaw(:,:,i) = double(cell2mat(images{i}));
+                obj.Holograms(:,:,i) = double(cell2mat(holograms{i}));
             end
+
             obj.Wavelengths = wavelengths;
-            obj.ZCoordinates = distances;
+            obj.ZCoordinates = zCoordinates;
             obj.CameraPixelSize = pixelSize;
-            [ySize, xSize] = size(obj.HologramsRaw(:,:,1));
+            [ySize, xSize] = size(obj.Holograms(:,:,1));
             
             % Deriving data
             obj.YCoordinates = (0:(ySize-1))*obj.CameraPixelSize;
             obj.XCoordinates = (0:(xSize-1))*obj.CameraPixelSize;
             inverseStepY = 1/ySize/pixelSize;
             inverseStepX = 1/xSize/pixelSize;
-            YInverseCoordinates =  -ySize/2*inverseStepY:inverseStepY:(ySize/2 - 1)*inverseStepY;
-            XInverseCoordinates =  -xSize/2*inverseStepX:inverseStepX:(xSize/2 - 1)*inverseStepX;
+            obj.YInverseCoordinates =  -ySize/2*inverseStepY:inverseStepY:(ySize/2 - 1)*inverseStepY;
+            obj.XInverseCoordinates =  -xSize/2*inverseStepX:inverseStepX:(xSize/2 - 1)*inverseStepX;
             obj.WaveNumbers = 2*pi./obj.Wavelengths;
+            
             for i = 1:length(wavelengths)
-                obj.HologramsFFT(:,:,i) = fft2(obj.HologramsRaw(:,:,i));
+                obj.HologramsFFT(:,:,i) = fft2(obj.Holograms(:,:,i));
                 obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
                     sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
-                    (ones(ySize,1)*(XInverseCoordinates.^2) + (YInverseCoordinates'.^2)*ones(1,xSize))));
+                    (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
             end
         end
         
@@ -66,92 +64,152 @@ classdef QCI_Model < handle
             return
         end
 
-        function image = getImage(obj, hologramIndex)
+        function holograms = getHolograms(obj, indexes)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            image = uint8(obj.HologramsRaw(:,:, hologramIndex));
-            return
+            if(indexes == 0)
+                holograms = obj.Holograms;
+            else
+                holograms = obj.Holograms(:,:, indexes);
+            end
         end
 
-        function image = getHologramPostPropagation(obj, hologramIndex)
-            if(isempty(obj.HologramsPostPropagation))
-                image = zeros(size(obj.HologramsRaw(:,:,1)));
-                return
+        function holograms = setHolograms(obj, holograms, indexes)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+
+            if(size(holograms, 3) == size(obj.Holograms,3))
+                    obj.Holograms = double(holograms);
+                    obj.HologramsFFT = fft2(holograms);
+            elseif(size(holograms, 3) == size(indexes))
+                obj.Holograms(:,:,indexes) = double(holograms);
+                obj.HologramsFFT(:,:,indexes) = fft2(holograms);
+            else
+                error("Dimension of indexes array does not match the amount of given holograms.");
             end
-            image = obj.HologramsPostPropagation(:,:,hologramIndex);
         end
 
-        function image = getCorrectedHologram(obj, hologramIndex)
-            if(isempty(obj.CorrectedHolograms))
-                image = zeros(size(obj.HologramsRaw(:,:,1)));
-                return
-            end
-            image = obj.CorrectedHolograms(:,:,hologramIndex);
-        end
 
-        function image = getCorrectedReference(obj, hologramIndex)
-            if(isempty(obj.CorrectedReference))
-                image = zeros(size(obj.HologramsPostPropagation(:,:,1)));
-                return
-            end
+        function addHologram(obj, name, hologram, wavelength, zCoordinate)
+            obj.Names(end + 1) = name;
+            obj.Holograms(:, :, end + 1) = hologram;
+            obj.Wavelengths(end + 1) = wavelength;
+            obj.ZCoordinates(end + 1) = zCoordinate;
+            obj.WaveNumbers(end + 1) = 2*pi./obj.Wavelengths(end);
             
-            image = obj.CorrectedReference(:,:,hologramIndex);
+            obj.HologramsFFT(:,:,end + 1) = fft2(obj.Holograms(:,:,end));
+            [ySize, xSize] = size(obj.Holograms(:, :, 1));
+            obj.FreeSpaceImpulseMatrixes(:,:,end + 1) = fftshift(obj.WaveNumbers(end) *...
+                sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(end)^2 *...
+                (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
         end
 
-        function Wavelengths = getWavelengths(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            Wavelengths = obj.Wavelengths;
-            return
-        end
+        function removeHologram(obj, hologramIndex)
+            obj.Holograms(:, :, hologramIndex) = [];
+            obj.Wavelengths(hologramIndex) = [];
+            obj.ZCoordinates(hologramIndex) = [];
+            obj.WaveNumbers(hologramIndex) = [];
+            
+            obj.HologramsFFT(:, :, hologramIndex) = [];
+            obj.FreeSpaceImpulseMatrixes(:, :, hologramIndex) = [];
 
-        function setWavelengths(obj, Wavelengths)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            for i = 1:length(Wavelengths)
-                if(Wavelengths(i) ~= obj.Wavelengths(i))
-                    obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
-                        sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
-                        (ones(ySize,1)*(XInverseCoordinates.^2) + (YInverseCoordinates'.^2)*ones(1,xSize))));
-                end
+            if(isempty(obj.Holograms))
+                obj.XInverseCoordinates = [];
+                obj.YInverseCoordinates = [];
+                obj.XCoordinates = [];
+                obj.YCoordinates = [];
+                obj.CameraPixelSize = 1;
+                obj.MediumRefractiveIndex = 1;
             end
-            obj.Wavelengths = Wavelengths;
-            return
         end
 
-        function ZCoordinates = getZCoordinates(obj)
+        function wavelengths = getWavelengths(obj, indexes)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            ZCoordinates = obj.ZCoordinates;
+            if(indexes == 0)
+                wavelengths = obj.Wavelengths;
+            else
+                wavelengths = obj.Wavelengths(indexes);
+            end
+        end
+
+        function setWavelengths(obj, wavelengths, indexes)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            if(size(wavelengths) == size(obj.Wavelengths))
+                for i = 1:length(wavelengths)
+                    if(wavelengths(i) ~= obj.Wavelengths(i))
+                        obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
+                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+                    end
+                end
+                obj.Wavelengths = wavelengths;
+            elseif(size(wavelengths) == size(indexes))  
+                for i = indexes
+                    if(wavelengths(i) ~= obj.Wavelengths(i))
+                        obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
+                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+                    end
+                end
+
+                obj.Wavelengths(indexes) = wavelengths;
+            else
+                error("Dimension of indexes array does not match the amount of given wavelengths.");
+            end
+
             return
         end
 
-        function setZCoordinates(obj, ZCoordinates)
-            % Setter fro ZCoordinates
-            obj.ZCoordinates = ZCoordinates;
-            return
+        function zCoordinates = getZCoordinates(obj, indexes)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            if(indexes == 0)
+                zCoordinates = obj.ZCoordinates;;
+            else
+                zCoordinates = obj.ZCoordinates(indexes);
+            end
+        end
+
+        function setZCoordinates(obj, zCoordinates, indexes)
+            % Setter for ZCoordinates
+            if(size(zCoordinates) == size(obj.ZCoordinates))
+                obj.ZCoordinates = zCoordinates;
+            elseif(size(zCoordinates) == size(indexes))  
+                obj.ZCoordinates(indexes) = zCoordinates;
+            else
+                error("Dimension of indexes array does not match the amount of given zCoordinates.");
+            end
         end
         
         % Operations on holograms
-        function hologramsPostPropagation = propagate(obj, z, hologramIndex)
+        function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
             % Propagates the image with Angular Scaling method
-            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex)*z;
+            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex)*obj.ZCoordinates(hologramIndex);
             kernelExponent = kernelExponent - kernelExponent(1,1);
-            
-            if(z<0)
+            %hologramPostPropagation = zeros(size(obj.Holograms,1), size(obj.Holograms,2));
+
+            if(obj.ZCoordinates(hologramIndex)<0)
                 kernel = exp(-1i*kernelExponent);
-                propagetedFFT = kernel.*obj.HologramsFFT(:,:, hologramIndex);
-                obj.HologramsPostPropagation(:,:, hologramIndex) = conj(ifft2(propagetedFFT));
-                hologramsPostPropagation = obj.HologramsPostPropagation(:,:, hologramIndex);
+                propagatedFFT = kernel.*fft2(conj(obj.Holograms(:,:,hologramIndex)));
+                hologramPostPropagation = conj(ifft2(propagatedFFT));
             else
                 kernel = exp(1i*kernelExponent);
-                propagetedFFT = kernel.*obj.HologramsFFT(:,:, hologramIndex);
-                obj.HologramsPostPropagation(:,:, hologramIndex) = ifft2(propagetedFFT);
-                hologramsPostPropagation = obj.HologramsPostPropagation(:,:, hologramIndex);
+                propagatedFFT = kernel.*obj.HologramsFFT(:,:, hologramIndex);
+                hologramPostPropagation = ifft2(propagatedFFT);
+            end
+            hologramPostPropagation = double(hologramPostPropagation);
+
+            if(nargin == 3)
+                if(willReplace)
+                    obj.Holograms(:,:,hologramIndex) = hologramPostPropagation;
+                    obj.HologramsFFT(:,:, hologramIndex) = propagatedFFT;
+                end
             end
         end
-
-        function [fixedReferenceImages, fixedHolograms, tforms] = automaticalShiftAndScalingCorrection(obj, referenceImages, holograms)
+        
+        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = automaticalShiftAndScalingCorrection(obj, referenceImages)
         %   Align and scale holograms to reference images based on 
         %   SURF feature matching and similarity transformation.
         %
@@ -164,24 +222,23 @@ classdef QCI_Model < handle
         %       fixedHolograms       - Aligned and scaled holograms.
         %       tforms               - Cell array of geometric transformations.
             % --- Initialization ---
-            if (nargin == 0)
-                if(~isempty(obj.HologramsRaw) && ~isempty(obj.HologramsPostPropagation))
-                    referenceImages = obj.HologramsPostPropagation;
-                    holograms = obj.HologramsRaw;
-                else
-                    error("Module has no holograms to work with.");
-                end
+            if(~isempty(obj.Holograms))
+                holograms = obj.Holograms;
+            else
+                error("Module has no holograms to work with.");
             end
 
             imageNumber = size(referenceImages, 3);
             fixedReferenceImages = zeros(size(referenceImages), 'like', referenceImages);
             fixedHolograms = zeros(size(holograms), 'like', holograms);
             tforms = cell(1, imageNumber-1);  % Store transformations
+            correctedHeights = zeros(1,imageNumber);
         
             % Select the last reference image as the alignment target
-            referenceImageFixed = referenceImages(:, :, end);
+            referenceImageFixed = -angle(referenceImages(:, :, end));
             fixedReferenceImages(:, :, end) = referenceImageFixed;
             fixedHolograms(:, :, end) = holograms(:, :, end);
+            correctedHeights(end) = obj.ZCoordinates(end);
             
             % Detect features in the fixed reference image
             featureDetectionThreshold = 10000;
@@ -191,7 +248,7 @@ classdef QCI_Model < handle
             % --- Loop through all images except the last one ---
             for k = 1:imageNumber-1
                 % Current distorted reference image and hologram
-                distortedImage = referenceImages(:, :, k);
+                distortedImage = -angle(referenceImages(:, :, k));
                 distortedHologram = holograms(:, :, k);
         
                 % Step 1: Detect and extract features
@@ -215,17 +272,16 @@ classdef QCI_Model < handle
                 fixedReferenceImages(:, :, k) = imwarp(distortedImage, tform, 'OutputView', Routput);
                 fixedHolograms(:, :, k) = imwarp(distortedHologram, tform, 'OutputView', Routput);
                 tforms{k} = tform;
+                correctedHeights(k) = round(obj.ZCoordinates(k).*tform.T(1,1).^2);
         
                 % Optional Debugging (uncomment for visualization)
                 % figure; showMatchedFeatures(referenceImageFixed, distortedImage, ...
                 %                            matchedFixed(inlierIdx), matchedDistorted(inlierIdx));
                 % title(sprintf('Image %d Matching Points (Inliers Only)', k));
             end
-            obj.CorrectedHolograms = fixedHolograms;
-            obj.CorrectedReference = fixedReferenceImages;
         end
 
-        function Reconstruction = IGA(obj, Hologram,z,wavelength,dx,sigma,iter)
+        function reconstruction = IGA(obj, iter, sigma)
         % Iterative Gabor Averagin (IGA) - method for phase retrieval from multiple
         % in-line holograms collected with different defocus and/or wavelength.
         % Algorithm was designed to work with low signal-to-noise-ratio data
@@ -270,58 +326,142 @@ classdef QCI_Model < handle
         % Last modified:
         %   04.09.2024
             
-            [Sy,Sx,N] = size(Hologram);
-            
-            if sigma < inf % if not GA method
-                if sigma > 0
-                    % Low-pass filtering of input holograms
-                    Hblurred = zeros(Sy,Sx,N);
-                    for n = 1:N
-                        Hblurred(:,:,n) = imgaussfilt(Hologram(:,:,n),sigma);
-                    end
-                else
-                    Hblurred = Hologram; % No bluring for GS method
-                end
-                % Gerchberg-Saxton reconstruction
-                if isscalar(length(unique(obj.Wavelengths))) 
-                    R_GS = GS_multiHeight(Hblurred, z, obj.Wavelengths(1),dx,iter,N);
-                else
-                    R_GS = GS_multiWavelength(Hblurred, z, obj.Wavelengths(1),dx,iter,N);
-                end
-            end
-            
-            % Gabor averaging reconstruction
-            if sigma > 0 % if not the GS method
-                R_GA = GA(Hologram,z,wavelength,dx,N);
-            end
-            
             if sigma == 0 % GS method
-                Reconstruction = R_GS;
+                reconstruction = obj.GerchbergSaxton(iter, sigma);
             elseif sigma == inf % GA method
-                Reconstruction = R_GA;
+                reconstruction = obj.GaborAveraging();
             else % IGA method
                 % Combine GS and GA methods
-                Rea = real(R_GS) + real(R_GA) - imgaussfilt(real(R_GA),sigma);
-                Ima = imag(R_GS) + imag(R_GA) - imgaussfilt(imag(R_GA),sigma);
-                Reconstruction = Rea + 1i.*Ima;
+                GerchbergSaxtonReconstruction = obj.GerchbergSaxton(iter, sigma);
+                GaborAveragingReconstruction = obj.GaborAveraging();
+
+                realPart = real(GerchbergSaxtonReconstruction) + real(GaborAveragingReconstruction) - imgaussfilt(real(GaborAveragingReconstruction), sigma);
+                imaginaryPart = imag(GerchbergSaxtonReconstruction) + imag(GaborAveragingReconstruction) - imgaussfilt(imag(GaborAveragingReconstruction), sigma);
+                reconstruction = realPart + 1i.*imaginaryPart;
+            end
+        end
+        
+        function reconstruction = GerchbergSaxton(obj, iter, sigma) 
+            % Multi-height Gerchberg-Saxton in-line holography phase retrieval
+            if(sigma > 0)
+                hologramsUnblurred = copy(obj.Holograms);
+                hologramsBlurred = imgaussfilt(hologramsUnblurred, sigma);
+                obj.Holograms = hologramsBlurred;
+            end
+
+            amplitudeImages = sqrt(obj.Holograms); % Amplitude = sqrt(intensity)
+            hologramCount = size(obj.Holograms,3);
+            isSingleWavelength = isscalar(unique(obj.Wavelengths));
+
+            obj.addHologram("intermediateHologram", amplitudeImages(:, :, 1), obj.Wavelengths(1), obj.ZCoordinates(1)); % ZCoordinate will be replaced
+            intermediateHologramIndex = hologramCount + 1;
+
+            if(isSingleWavelength)
+                for tt = 1:iter
+                    for nn = 1:(hologramCount-1)
+
+                        % Propagate to nn+1 hologram plane
+                        propagationDistance = obj.ZCoordinates(nn+1) - obj.ZCoordinates(nn);
+                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        intermediateField = obj.propagate(intermediateHologramIndex);
+
+                        % Actualize optical field with nn+1 amplitude
+                        intermediateField = intermediateField./abs(intermediateField) .* amplitudeImages(:,:,nn+1);
+                        obj.setHolograms(intermediateField, intermediateHologramIndex);
+                    end
+                    % Propagate to 1st hologram plane
+                    propagationDistance = obj.ZCoordinates(1) - obj.ZCoordinates(hologramCount);
+                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    intermediateField = obj.propagate(intermediateHologramIndex);
+                    % Actualize optical field with 1st amplitude
+                    intermediateField = intermediateField./abs(intermediateField) .* amplitudeImages(:,:,1);
+                    obj.setHolograms(intermediateField, intermediateHologramIndex);
+                end
+            else
+                for tt = 1:iter
+                    for nn = 1:(hologramCount-1)
+                        % Propagate to object plane
+                        propagationDistance = -obj.ZCoordinates(nn);
+                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        intermediateReconstruction = obj.propagate(intermediateHologramIndex);
+
+                        % Rescale phase to nn+1 wavelength
+                        phase = angle(intermediateReconstruction) * obj.Wavelengths(nn)/obj.Wavelengths(nn+1);
+                        intermediateReconstruction = abs(intermediateReconstruction) .* exp(1i.*phase);
+                        obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
+
+                        % Propagate to nn+1 hologram plane
+                        propagationDistance = obj.ZCoordinates(nn+1);
+                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        obj.setWavelengths(obj.Wavelengths(nn+1), intermediateHologramIndex);
+                        intermediateField = obj.propagate(intermediateHologramIndex);
+
+                        % Actualize optical field with nn+1 amplitude
+                        intermediateField = intermediateField ./ abs(intermediateField) .* amplitudeImages(:,:,nn+1);
+                        obj.setHolograms(intermediateField, intermediateHologramIndex);
+                    end
+                    % Propagate to object plane
+                    propagationDistance = -obj.ZCoordinates(hologramCount);
+                    propagatedWavelength = obj.Wavelengths(hologramCount);
+
+                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
+
+                    intermediateReconstruction = obj.propagate(intermediateHologramIndex);
+
+                    % Rescale phase to 1st wavelength
+                    phase = angle(intermediateReconstruction)*lambda(hologramCount)/lambda(1);
+                    intermediateReconstruction = abs(intermediateReconstruction).*exp(1i.*phase);
+                    obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
+
+                    % Propagate to 1st hologram plane
+                    propagationDistance = -obj.ZCoordinates(1);
+                    propagatedWavelength = obj.Wavelengths(1);
+
+                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
+
+                    intermediateField = obj.propagate(intermediateHologramIndex);
+
+                    % Actualize optical field with 1st amplitude
+                    intermediateField = intermediateField./abs(intermediateField).*amplitudeImages(:,:,1);
+                    obj.setHolograms(intermediateField, intermediateHologramIndex);
+                end
+            end
+
+            % Backpropagate reconstructed optical field to object plane
+            propagationDistance = -obj.ZCoordinates(1);
+            obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+
+            reconstruction = obj.propagate(intermediateHologramIndex);
+
+            obj.ZCoordinates(intermediateHologramIndex) = [];
+            obj.Holograms(:,:,intermediateHologramIndex) = [];
+
+            if(sigma > 0)
+                obj.Holograms = hologramsUnblurred;
             end
         end
 
-        function Reconstruction = GaborAveraging(obj, H, z)
-        % Gabor averaging in-line holography reconstruction
-            Reconstruction = 0;
-            hologramNumber = size(obj.HologramsRaw, 3);
-            for nn = 1:hologramNumber
+        function reconstruction = GaborAveraging(obj)
+            % Gabor averaging in-line holography reconstruction
+            reconstruction = zeros(size(obj.Holograms(:,:,1)));
+            hologramCount = size(obj.Holograms, 3);
+            obj.ZCoordinates = -obj.ZCoordinates;
+
+            for nn = 1:hologramCount
                 % Backpropagate each hologram to object plane
-                U = AS_propagate_p(H(:,:,nn), -obj.ZCoordinates(nn), obj.Wavelengths(nn), obj.CameraPixelSize);
+                intermediateReconstruction = obj.propagate(nn);
                 % Add the propagation result to the R_GA (and rescale phase to
                 % match the 1st wavelength)
-                Reconstruction = Reconstruction + sqrt(abs(U)) .* exp(1i.*angle(U) * obj.Wavelengths(nn)/obj.Wavelengths(1));
+                reconstruction = reconstruction + sqrt(abs(intermediateReconstruction)) .* exp(1i.*angle(intermediateReconstruction) * obj.Wavelengths(nn)/obj.Wavelengths(1));
             end
-            % Divide by the number of holograms
-            Reconstruction = Reconstruction/hologramNumber;
-        end
 
+            % Divide by the number of holograms
+            reconstruction = reconstruction/hologramCount;
+
+            obj.ZCoordinates = -obj.ZCoordinates;
+        end
     end
 end
 
