@@ -32,7 +32,7 @@ classdef QCI_Model < handle
             obj.Names = names;
             
             for i = 1:length(wavelengths)
-                obj.Holograms(:,:,i) = double(cell2mat(holograms{i}));
+                obj.Holograms(:,:,i) = holograms(:,:,i);
             end
 
             obj.Wavelengths = wavelengths;
@@ -192,7 +192,10 @@ classdef QCI_Model < handle
 
             if(obj.ZCoordinates(hologramIndex)<0)
                 kernel = exp(-1i*kernelExponent);
-                propagatedFFT = kernel.*fft2(conj(obj.Holograms(:,:,hologramIndex)));
+                FT_Uout = conj(obj.HologramsFFT(:,:, hologramIndex));
+                FT_Uout = flip(flip(FT_Uout, 1), 2);  % Odbicie w pionie i poziomie
+                FT_Uout = circshift(FT_Uout, [1, 1]); % Przesunięcie o 1 piksel
+                propagatedFFT = kernel.*FT_Uout;
                 hologramPostPropagation = conj(ifft2(propagatedFFT));
             else
                 kernel = exp(1i*kernelExponent);
@@ -461,6 +464,37 @@ classdef QCI_Model < handle
             reconstruction = reconstruction/hologramCount;
 
             obj.ZCoordinates = -obj.ZCoordinates;
+        end
+        % DarkFocus version 3
+        function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, ROI)
+            background = imgaussfilt(obj.Holograms(:,:,hologramIndex), 30);
+            darkHologram = obj.Holograms(:,:,hologramIndex) - background;
+
+            YIndexes = (ROI(2):ROI(2)+ROI(4) - 1)+1;
+            XIndexes = (ROI(1):ROI(1)+ROI(3) - 1)+1;
+            darkHologram = darkHologram(YIndexes,XIndexes);
+
+            darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.ZCoordinates(hologramIndex),obj.CameraPixelSize);
+            DarkFocus = zeros(1,length(range));
+            DarkVolume = zeros(length(YIndexes), length(XIndexes));
+
+            for rangeIndex = 1:length(range)
+                darkModel.setZCoordinates(range(rangeIndex),1);
+                Obj1 = darkModel.propagate(1);
+                % DarkFocus
+                amp = abs(Obj1);
+                DarkVolume(:,:,rangeIndex) = amp(ROIY,ROIX); %angle(Obj1);%
+                [gx, gy] = gradient(DarkVolume(:,:,rangeIndex));
+                grad = gx.^2+gy.^2;
+                DarkFocus(rangeIndex) = var(grad(:));
+            end
+            
+            % normalization 0-1
+            DarkFocus = DarkFocus - min(DarkFocus); DarkFocus = DarkFocus/max(DarkFocus);
+            focusCurves(1,:) = DarkFocus;
+            [~,loc] = max(focusCurves);
+            bestFocusZ = range(loc);
+
         end
     end
 end
