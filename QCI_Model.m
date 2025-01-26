@@ -2,7 +2,7 @@ classdef QCI_Model < handle
     %QCI_MODEL is a bundle used for hologram creation and manipulation
     %   Detailed explanation goes here
     
-    properties (Access = private)
+    properties (Access = protected)
         %Initial Data
         Names                   (1,:) string = []
         Holograms               (:,:,:) double                   = []       % Hologram image (matrix)
@@ -192,16 +192,20 @@ classdef QCI_Model < handle
 
             if(obj.ZCoordinates(hologramIndex)<0)
                 kernel = exp(-1i*kernelExponent);
+                
                 FT_Uout = conj(obj.HologramsFFT(:,:, hologramIndex));
                 FT_Uout = flip(flip(FT_Uout, 1), 2);  % Odbicie w pionie i poziomie
                 FT_Uout = circshift(FT_Uout, [1, 1]); % Przesunięcie o 1 piksel
+
                 propagatedFFT = kernel.*FT_Uout;
+
                 hologramPostPropagation = conj(ifft2(propagatedFFT));
             else
                 kernel = exp(1i*kernelExponent);
                 propagatedFFT = kernel.*obj.HologramsFFT(:,:, hologramIndex);
                 hologramPostPropagation = ifft2(propagatedFFT);
             end
+            
             hologramPostPropagation = double(hologramPostPropagation);
 
             if(nargin == 3)
@@ -210,6 +214,29 @@ classdef QCI_Model < handle
                     obj.HologramsFFT(:,:, hologramIndex) = propagatedFFT;
                 end
             end
+        end
+
+        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = ThreePointShiftAndScalingCorrection(obj, referenceImages, points)
+            
+            for pointIndex = 1:3
+                fixedPoints(pointIndex,:) = points{end}{pointIndex};
+            end
+            
+            for tt = 1:size(referenceImages,3)-1
+                for pointIndex = 1:3
+                    movingPoints(pointIndex,:) = points{tt}{pointIndex};
+                end
+
+                tform = fitgeotrans(movingPoints,fixedPoints,'similarity');
+                Roriginal = imref2d(size(referenceImages(:,:,end)));
+                fixedHolograms(:,:,tt) = imwarp(obj.Holograms(:,:,tt),tform,'OutputView',Roriginal);
+                fixedReferenceImages(:,:,tt) = imwarp(referenceImages(:,:,tt),tform,'OutputView',Roriginal);
+                correctedHeights(tt) = round(obj.ZCoordinates(tt).*tform.T(1,1).^2);
+                tforms{tt} = tform;
+            end
+            fixedHolograms(:,:,end+1) = obj.Holograms(:,:,end);
+            fixedReferenceImages(:,:,end+1) = referenceImages(:,:,end);
+            correctedHeights(end+1) = obj.ZCoordinates(end);
         end
         
         function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = automaticalShiftAndScalingCorrection(obj, referenceImages)
