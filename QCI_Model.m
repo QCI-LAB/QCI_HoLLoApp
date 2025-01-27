@@ -493,24 +493,30 @@ classdef QCI_Model < handle
             obj.ZCoordinates = -obj.ZCoordinates;
         end
         % DarkFocus version 3
-        function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, ROI)
+        function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
             background = imgaussfilt(obj.Holograms(:,:,hologramIndex), 30);
             darkHologram = obj.Holograms(:,:,hologramIndex) - background;
 
-            YIndexes = (ROI(2):ROI(2)+ROI(4) - 1)+1;
-            XIndexes = (ROI(1):ROI(1)+ROI(3) - 1)+1;
+            YIndexes = (inspectedROI(2):inspectedROI(2)+inspectedROI(4) - 1)+1;
+            XIndexes = (inspectedROI(1):inspectedROI(1)+inspectedROI(3) - 1)+1;
+
+            darkVolumeROI(2) = darkVolumeROI(2) - inspectedROI(2) + 1;
+            darkVolumeROI(1) = darkVolumeROI(1) - inspectedROI(1) + 1;
+
+            darkVolumeYIndexes = darkVolumeROI(2):(darkVolumeROI(2)+darkVolumeROI(4));
+            darkVolumeXIndexes = darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3));
             darkHologram = darkHologram(YIndexes,XIndexes);
 
             darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.ZCoordinates(hologramIndex),obj.CameraPixelSize);
             DarkFocus = zeros(1,length(range));
-            DarkVolume = zeros(length(YIndexes), length(XIndexes));
+            DarkVolume = zeros(length(darkVolumeYIndexes), length(darkVolumeXIndexes));
 
             for rangeIndex = 1:length(range)
                 darkModel.setZCoordinates(range(rangeIndex),1);
                 Obj1 = darkModel.propagate(1);
                 % DarkFocus
                 amp = abs(Obj1);
-                DarkVolume(:,:,rangeIndex) = amp(ROIY,ROIX); %angle(Obj1);%
+                DarkVolume(:,:,rangeIndex) = amp(darkVolumeYIndexes, darkVolumeXIndexes); %angle(Obj1);%
                 [gx, gy] = gradient(DarkVolume(:,:,rangeIndex));
                 grad = gx.^2+gy.^2;
                 DarkFocus(rangeIndex) = var(grad(:));
