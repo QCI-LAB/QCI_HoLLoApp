@@ -57,10 +57,15 @@ classdef QCI_Model < handle
             end
         end
         
-        function names = getNames(obj)
+        function names = getNames(obj, indexes)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            names = obj.Names;
+            if(indexes == 0)
+                names = obj.Names;
+            else
+                names = obj.Names(indexes);
+            end
+     
             return
         end
 
