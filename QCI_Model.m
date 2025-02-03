@@ -379,7 +379,7 @@ classdef QCI_Model < handle
         function reconstruction = GerchbergSaxton(obj, iter, sigma) 
             % Multi-height Gerchberg-Saxton in-line holography phase retrieval
             if(sigma > 0)
-                hologramsUnblurred = copy(obj.Holograms);
+                hologramsUnblurred = obj.Holograms;
                 hologramsBlurred = imgaussfilt(hologramsUnblurred, sigma);
                 obj.Holograms = hologramsBlurred;
             end
