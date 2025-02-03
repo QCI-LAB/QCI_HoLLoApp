@@ -7,7 +7,7 @@ classdef QCI_Model < handle
         Names                   (1,:) string = []
         Holograms               (:,:,:) double                   = []       % Hologram image (matrix)
         Wavelengths             (1,:) double {mustBeNonnegative} = []       % Wavelength of light used [micro meters]
-        ZCoordinates            (1,:) double                     = []       % Distance from CCD to sample [micro meters] on the optical axis
+        PropagationDistances    (1,:) double                     = []       % Distance from CCD to sample [micro meters] on the optical axis
         CameraPixelSize         (1,1) double = 1                            % Size of a pixel on the CCD camera used to obtain the hologram
         MediumRefractiveIndex   (1,1) double = 1                            % Refractive index of the medium in which the hologram was taken (assume air)
 
@@ -22,7 +22,7 @@ classdef QCI_Model < handle
     end
     
     methods
-        function obj = QCI_Model(names, holograms, wavelengths, zCoordinates, pixelSize)
+        function obj = QCI_Model(names, holograms, wavelengths, propagationDistances, pixelSize)
             if nargin == 0
                 return
             end
@@ -36,7 +36,7 @@ classdef QCI_Model < handle
             end
 
             obj.Wavelengths = wavelengths;
-            obj.ZCoordinates = zCoordinates;
+            obj.PropagationDistances = propagationDistances;
             obj.CameraPixelSize = pixelSize;
             [ySize, xSize] = size(obj.Holograms(:,:,1));
             
@@ -99,7 +99,7 @@ classdef QCI_Model < handle
             obj.Names(end + 1) = name;
             obj.Holograms(:, :, end + 1) = hologram;
             obj.Wavelengths(end + 1) = wavelength;
-            obj.ZCoordinates(end + 1) = zCoordinate;
+            obj.PropagationDistances(end + 1) = zCoordinate;
             obj.WaveNumbers(end + 1) = 2*pi./obj.Wavelengths(end);
             
             obj.HologramsFFT(:,:,end + 1) = fft2(obj.Holograms(:,:,end));
@@ -112,7 +112,7 @@ classdef QCI_Model < handle
         function removeHologram(obj, hologramIndex)
             obj.Holograms(:, :, hologramIndex) = [];
             obj.Wavelengths(hologramIndex) = [];
-            obj.ZCoordinates(hologramIndex) = [];
+            obj.PropagationDistances(hologramIndex) = [];
             obj.WaveNumbers(hologramIndex) = [];
             
             obj.HologramsFFT(:, :, hologramIndex) = [];
@@ -167,35 +167,35 @@ classdef QCI_Model < handle
             return
         end
 
-        function zCoordinates = getZCoordinates(obj, indexes)
+        function propagationDistances = getPropagationDistances(obj, indexes)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             if(indexes == 0)
-                zCoordinates = obj.ZCoordinates;;
+                propagationDistances = obj.PropagationDistances;
             else
-                zCoordinates = obj.ZCoordinates(indexes);
+                propagationDistances = obj.PropagationDistances(indexes);
             end
         end
 
-        function setZCoordinates(obj, zCoordinates, indexes)
+        function setPropagationDistances(obj, propagationDistances, indexes)
             % Setter for ZCoordinates
-            if(size(zCoordinates) == size(obj.ZCoordinates))
-                obj.ZCoordinates = zCoordinates;
-            elseif(size(zCoordinates) == size(indexes))  
-                obj.ZCoordinates(indexes) = zCoordinates;
+            if(size(propagationDistances) == size(obj.PropagationDistances))
+                obj.PropagationDistances = propagationDistances;
+            elseif(size(propagationDistances) == size(indexes))  
+                obj.PropagationDistances(indexes) = propagationDistances;
             else
-                error("Dimension of indexes array does not match the amount of given zCoordinates.");
+                error("Dimension of indexes array does not match the amount of given propagationDistances.");
             end
         end
         
         % Operations on holograms
         function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
             % Propagates the image with Angular Scaling method
-            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex)*obj.ZCoordinates(hologramIndex);
+            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex)*obj.PropagationDistances(hologramIndex);
             kernelExponent = kernelExponent - kernelExponent(1,1);
             %hologramPostPropagation = zeros(size(obj.Holograms,1), size(obj.Holograms,2));
 
-            if(obj.ZCoordinates(hologramIndex)<0)
+            if(obj.PropagationDistances(hologramIndex)<0)
                 kernel = exp(-1i*kernelExponent);
                 
                 FT_Uout = conj(obj.HologramsFFT(:,:, hologramIndex));
@@ -236,12 +236,12 @@ classdef QCI_Model < handle
                 Roriginal = imref2d(size(referenceImages(:,:,end)));
                 fixedHolograms(:,:,tt) = imwarp(obj.Holograms(:,:,tt),tform,'OutputView',Roriginal);
                 fixedReferenceImages(:,:,tt) = imwarp(referenceImages(:,:,tt),tform,'OutputView',Roriginal);
-                correctedHeights(tt) = round(obj.ZCoordinates(tt).*tform.T(1,1).^2);
+                correctedHeights(tt) = round(obj.PropagationDistances(tt).*tform.T(1,1).^2);
                 tforms{tt} = tform;
             end
             fixedHolograms(:,:,end+1) = obj.Holograms(:,:,end);
             fixedReferenceImages(:,:,end+1) = referenceImages(:,:,end);
-            correctedHeights(end+1) = obj.ZCoordinates(end);
+            correctedHeights(end+1) = obj.PropagationDistances(end);
         end
         
         function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = automaticalShiftAndScalingCorrection(obj, referenceImages)
@@ -273,7 +273,7 @@ classdef QCI_Model < handle
             referenceImageFixed = -angle(referenceImages(:, :, end));
             fixedReferenceImages(:, :, end) = referenceImageFixed;
             fixedHolograms(:, :, end) = holograms(:, :, end);
-            correctedHeights(end) = obj.ZCoordinates(end);
+            correctedHeights(end) = obj.PropagationDistances(end);
             
             % Detect features in the fixed reference image
             featureDetectionThreshold = 10000;
@@ -307,7 +307,7 @@ classdef QCI_Model < handle
                 fixedReferenceImages(:, :, k) = imwarp(distortedImage, tform, 'OutputView', Routput);
                 fixedHolograms(:, :, k) = imwarp(distortedHologram, tform, 'OutputView', Routput);
                 tforms{k} = tform;
-                correctedHeights(k) = round(obj.ZCoordinates(k).*tform.T(1,1).^2);
+                correctedHeights(k) = round(obj.PropagationDistances(k).*tform.T(1,1).^2);
         
                 % Optional Debugging (uncomment for visualization)
                 % figure; showMatchedFeatures(referenceImageFixed, distortedImage, ...
@@ -388,7 +388,7 @@ classdef QCI_Model < handle
             hologramCount = size(obj.Holograms,3);
             isSingleWavelength = isscalar(unique(obj.Wavelengths));
 
-            obj.addHologram("intermediateHologram", amplitudeImages(:, :, 1), obj.Wavelengths(1), obj.ZCoordinates(1)); % ZCoordinate will be replaced
+            obj.addHologram("intermediateHologram", amplitudeImages(:, :, 1), obj.Wavelengths(1), obj.PropagationDistances(1)); % ZCoordinate will be replaced
             intermediateHologramIndex = hologramCount + 1;
 
             if(isSingleWavelength)
@@ -396,8 +396,8 @@ classdef QCI_Model < handle
                     for nn = 1:(hologramCount-1)
 
                         % Propagate to nn+1 hologram plane
-                        propagationDistance = obj.ZCoordinates(nn+1) - obj.ZCoordinates(nn);
-                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        propagationDistance = obj.PropagationDistances(nn+1) - obj.PropagationDistances(nn);
+                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                         intermediateField = obj.propagate(intermediateHologramIndex);
 
                         % Actualize optical field with nn+1 amplitude
@@ -405,8 +405,8 @@ classdef QCI_Model < handle
                         obj.setHolograms(intermediateField, intermediateHologramIndex);
                     end
                     % Propagate to 1st hologram plane
-                    propagationDistance = obj.ZCoordinates(1) - obj.ZCoordinates(hologramCount);
-                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    propagationDistance = obj.PropagationDistances(1) - obj.PropagationDistances(hologramCount);
+                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                     intermediateField = obj.propagate(intermediateHologramIndex);
                     % Actualize optical field with 1st amplitude
                     intermediateField = intermediateField./abs(intermediateField) .* amplitudeImages(:,:,1);
@@ -416,8 +416,8 @@ classdef QCI_Model < handle
                 for tt = 1:iter
                     for nn = 1:(hologramCount-1)
                         % Propagate to object plane
-                        propagationDistance = -obj.ZCoordinates(nn);
-                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        propagationDistance = -obj.PropagationDistances(nn);
+                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                         intermediateReconstruction = obj.propagate(intermediateHologramIndex);
 
                         % Rescale phase to nn+1 wavelength
@@ -426,8 +426,8 @@ classdef QCI_Model < handle
                         obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
 
                         % Propagate to nn+1 hologram plane
-                        propagationDistance = obj.ZCoordinates(nn+1);
-                        obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                        propagationDistance = obj.PropagationDistances(nn+1);
+                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                         obj.setWavelengths(obj.Wavelengths(nn+1), intermediateHologramIndex);
                         intermediateField = obj.propagate(intermediateHologramIndex);
 
@@ -436,10 +436,10 @@ classdef QCI_Model < handle
                         obj.setHolograms(intermediateField, intermediateHologramIndex);
                     end
                     % Propagate to object plane
-                    propagationDistance = -obj.ZCoordinates(hologramCount);
+                    propagationDistance = -obj.PropagationDistances(hologramCount);
                     propagatedWavelength = obj.Wavelengths(hologramCount);
 
-                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                     obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
 
                     intermediateReconstruction = obj.propagate(intermediateHologramIndex);
@@ -450,10 +450,10 @@ classdef QCI_Model < handle
                     obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
 
                     % Propagate to 1st hologram plane
-                    propagationDistance = -obj.ZCoordinates(1);
+                    propagationDistance = -obj.PropagationDistances(1);
                     propagatedWavelength = obj.Wavelengths(1);
 
-                    obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
                     obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
 
                     intermediateField = obj.propagate(intermediateHologramIndex);
@@ -465,12 +465,12 @@ classdef QCI_Model < handle
             end
 
             % Backpropagate reconstructed optical field to object plane
-            propagationDistance = -obj.ZCoordinates(1);
-            obj.setZCoordinates(propagationDistance, intermediateHologramIndex);
+            propagationDistance = -obj.PropagationDistances(1);
+            obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
 
             reconstruction = obj.propagate(intermediateHologramIndex);
 
-            obj.ZCoordinates(intermediateHologramIndex) = [];
+            obj.PropagationDistances(intermediateHologramIndex) = [];
             obj.Holograms(:,:,intermediateHologramIndex) = [];
 
             if(sigma > 0)
@@ -482,7 +482,7 @@ classdef QCI_Model < handle
             % Gabor averaging in-line holography reconstruction
             reconstruction = zeros(size(obj.Holograms(:,:,1)));
             hologramCount = size(obj.Holograms, 3);
-            obj.ZCoordinates = -obj.ZCoordinates;
+            obj.PropagationDistances = -obj.PropagationDistances;
 
             for nn = 1:hologramCount
                 % Backpropagate each hologram to object plane
@@ -495,7 +495,7 @@ classdef QCI_Model < handle
             % Divide by the number of holograms
             reconstruction = reconstruction/hologramCount;
 
-            obj.ZCoordinates = -obj.ZCoordinates;
+            obj.PropagationDistances = -obj.PropagationDistances;
         end
         % DarkFocus version 3
         function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
@@ -512,12 +512,12 @@ classdef QCI_Model < handle
             darkVolumeXIndexes = darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3));
             darkHologram = darkHologram(YIndexes,XIndexes);
 
-            darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.ZCoordinates(hologramIndex),obj.CameraPixelSize);
+            darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.PropagationDistances(hologramIndex),obj.CameraPixelSize);
             DarkFocus = zeros(1,length(range));
             DarkVolume = zeros(length(darkVolumeYIndexes), length(darkVolumeXIndexes));
 
             for rangeIndex = 1:length(range)
-                darkModel.setZCoordinates(range(rangeIndex),1);
+                darkModel.setPropagationDistances(range(rangeIndex),1);
                 Obj1 = darkModel.propagate(1);
                 % DarkFocus
                 amp = abs(Obj1);
