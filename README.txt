@@ -17,7 +17,7 @@ This MATLAB-based application is designed for analyzing and creating holograms u
   - Ability to compare input data with processed results.
 
 - **Modular Design**:
-  - Includes a dedicated `HoloData` class to manage data and methods for hologram processing.
+  - Includes a dedicated `QCI_Model` class to manage data and methods for hologram processing.
   - Flexible and extendable for incorporating new algorithms or data types.
 
 ## Requirements
