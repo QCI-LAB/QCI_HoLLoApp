@@ -141,6 +141,7 @@ classdef QCI_Model < handle
         function setWavelengths(obj, wavelengths, indexes)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
+            [ySize, xSize] = size(obj.Holograms(:,:,1));
             if(size(wavelengths) == size(obj.Wavelengths))
                 for i = 1:length(wavelengths)
                     if(wavelengths(i) ~= obj.Wavelengths(i))
