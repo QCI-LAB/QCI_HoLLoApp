@@ -152,10 +152,10 @@ classdef QCI_Model < handle
                 end
                 obj.Wavelengths = wavelengths;
             elseif(size(wavelengths) == size(indexes))  
-                for i = indexes
-                    if(wavelengths(i) ~= obj.Wavelengths(i))
-                        obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
-                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                for i = 1:length(indexes)
+                    if(wavelengths(i) ~= obj.Wavelengths(indexes(i)))
+                        obj.FreeSpaceImpulseMatrixes(:,:,indexes(i)) = fftshift(obj.WaveNumbers(indexes(i)) *...
+                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(indexes(i))^2 *...
                             (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
                     end
                 end
@@ -466,7 +466,7 @@ classdef QCI_Model < handle
                     intermediateReconstruction = obj.propagate(intermediateHologramIndex);
 
                     % Rescale phase to 1st wavelength
-                    phase = angle(intermediateReconstruction)*lambda(hologramCount)/lambda(1);
+                    phase = angle(intermediateReconstruction)*obj.Wavelengths(hologramCount)/obj.Wavelengths(1);
                     intermediateReconstruction = abs(intermediateReconstruction).*exp(1i.*phase);
                     obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
 
