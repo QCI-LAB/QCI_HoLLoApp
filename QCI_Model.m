@@ -537,14 +537,17 @@ classdef QCI_Model < handle
 
             YIndexes = (inspectedROI(2):inspectedROI(2)+inspectedROI(4) - 1) + 1;
             XIndexes = (inspectedROI(1):inspectedROI(1)+inspectedROI(3) - 1) + 1;
+            
             if(darkVolumeROI == 0)
-                darkVolumeROI = inspectedROI;
+                darkVolumeROI = [1 1 inspectedROI(3) inspectedROI(4)];
             else
                 darkVolumeROI(2) = darkVolumeROI(2) - inspectedROI(2) + 1;
                 darkVolumeROI(1) = darkVolumeROI(1) - inspectedROI(1) + 1;
             end
-            darkVolumeYIndexes = (darkVolumeROI(2):(darkVolumeROI(2)+darkVolumeROI(4)) - 1) + 1;
-            darkVolumeXIndexes = (darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3)) - 1) + 1;
+
+            darkVolumeYIndexes = (darkVolumeROI(2):(darkVolumeROI(2)+darkVolumeROI(4)) - 1);
+            darkVolumeXIndexes = (darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3)) - 1);
+            
             darkHologram = darkHologram(YIndexes,XIndexes);
 
             darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.PropagationDistances(hologramIndex),obj.CameraPixelSize);
