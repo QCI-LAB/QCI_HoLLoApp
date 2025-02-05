@@ -332,21 +332,50 @@ classdef QCI_Model < handle
             end
         end
 
-        function  fixedHolograms = automaticalShiftCorrection(obj, holograms)
+        function  [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)
             % --- Initialization ---
             if(isempty(holograms))
                 error("No holograms to work with.");
             end
 
             hologramsFFT = fft2(holograms);
+            hologramCount = size(holograms,3);
 
             usfactor = 10;
+            rowShifts = zeros(1,hologramCount);
+            columnShifts = zeros(1,hologramCount);
 
-            for hologramIndex = 1:(size(holograms,3)-1)
-                [~, Greg] = dftregistration(hologramsFFT(:,:,end), hologramsFFT(:,:,hologramIndex), usfactor)
+            for hologramIndex = 1:(hologramCount-1)
+                [output, Greg] = dftregistration(hologramsFFT(:,:,end), hologramsFFT(:,:,hologramIndex), usfactor);
+
+                rowShifts(hologramIndex) = output(3);
+                columnShifts(hologramIndex) = output(4);
                 fixedHolograms(:,:,hologramIndex) = ifft2(Greg);
             end
+
+            rowShifts(end) = 0;
+            columnShifts(end) = 0;
             fixedHolograms(:,:,end) = holograms(:,:,end);
+        end
+
+        function shiftedHologram = shiftHologram(obj, hologram, shift_x, shift_y)
+        % Funkcja przesuwa obraz 'holo' o shift_x i shift_y (w pikselach) w płaszczyźnie x,y
+        % Parametry:
+        %   holo - wejściowy obraz/hologram
+        %   shift_x, shift_y - przesunięcia w pikselach
+         
+            [Ny, Nx] = size(hologram); % Rozmiar hologramu
+             
+            % Siatki przestrzeni częstotliwości
+            fx = [0:Nx/2-1, -Nx/2:-1] / Nx; % Normalizowane częstotliwości x
+            fy = [0:Ny/2-1, -Ny/2:-1] / Ny; % Normalizowane częstotliwości y
+            [Fx, Fy] = meshgrid(fx, fy);
+             
+            % Przesunięcie fazowe w dziedzinie częstotliwości
+            phase_shift = exp(-1i * 2 * pi * (Fx * shift_x + Fy * shift_y));
+             
+            % Przesunięcie obrazu
+            shiftedHologram = ifft2(fft2(hologram) .* phase_shift);
         end
 
         function reconstruction = IGA(obj, iter, sigma)
@@ -537,7 +566,7 @@ classdef QCI_Model < handle
 
             YIndexes = (inspectedROI(2):inspectedROI(2)+inspectedROI(4) - 1) + 1;
             XIndexes = (inspectedROI(1):inspectedROI(1)+inspectedROI(3) - 1) + 1;
-            
+
             if(darkVolumeROI == 0)
                 darkVolumeROI = [1 1 inspectedROI(3) inspectedROI(4)];
             else
