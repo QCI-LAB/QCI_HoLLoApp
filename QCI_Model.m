@@ -237,8 +237,7 @@ classdef QCI_Model < handle
             end
         end
 
-        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = ThreePointShiftAndScalingCorrection(obj, referenceImages, points)
-            
+        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = ThreePointShiftAndScalingCorrection(obj, referenceImages, points) 
             for pointIndex = 1:3
                 fixedPoints(pointIndex,:) = points{end}{pointIndex};
             end
@@ -255,6 +254,7 @@ classdef QCI_Model < handle
                 correctedHeights(tt) = round(obj.PropagationDistances(tt).*tform.T(1,1).^2);
                 tforms{tt} = tform;
             end
+            
             fixedHolograms(:,:,end+1) = obj.Holograms(:,:,end);
             fixedReferenceImages(:,:,end+1) = referenceImages(:,:,end);
             correctedHeights(end+1) = obj.PropagationDistances(end);
