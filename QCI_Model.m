@@ -317,24 +317,21 @@ classdef QCI_Model < handle
             end
         end
 
-        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = automaticalShiftCorrection(obj, referenceImages)
-        %   Align and scale holograms to reference images based on 
-        %   SURF feature matching and similarity transformation.
-        %
-        %   Inputs:
-        %       referenceImages  - 3D array of reference images (amplitude and phase).
-        %       holograms        - 3D array of holograms to align with the references.
-        %
-        %   Outputs:
-        %       fixedReferenceImages - Aligned and scaled reference images.
-        %       fixedHolograms       - Aligned and scaled holograms.
-        %       tforms               - Cell array of geometric transformations.
+        function  fixedHolograms = automaticalShiftCorrection(obj, holograms)
             % --- Initialization ---
-            if(~isempty(obj.Holograms))
-                holograms = obj.Holograms;
-            else
-                error("Module has no holograms to work with.");
+            if(isempty(holograms))
+                error("No holograms to work with.");
             end
+
+            hologramsFFT = fft2(holograms);
+
+            usfactor = 10;
+
+            for hologramIndex = 1:(size(holograms,3)-1)
+                [~, Greg] = dftregistration(hologramsFFT(:,:,end), hologramsFFT(:,:,hologramIndex), usfactor)
+                fixedHolograms(:,:,hologramIndex) = ifft2(Greg);
+            end
+            fixedHolograms(:,:,end) = holograms(:,:,end);
         end
 
         function reconstruction = IGA(obj, iter, sigma)
@@ -523,14 +520,16 @@ classdef QCI_Model < handle
             background = imgaussfilt(obj.Holograms(:,:,hologramIndex), 30);
             darkHologram = obj.Holograms(:,:,hologramIndex) - background;
 
-            YIndexes = (inspectedROI(2):inspectedROI(2)+inspectedROI(4) - 1)+1;
-            XIndexes = (inspectedROI(1):inspectedROI(1)+inspectedROI(3) - 1)+1;
-
-            darkVolumeROI(2) = darkVolumeROI(2) - inspectedROI(2) + 1;
-            darkVolumeROI(1) = darkVolumeROI(1) - inspectedROI(1) + 1;
-
-            darkVolumeYIndexes = darkVolumeROI(2):(darkVolumeROI(2)+darkVolumeROI(4));
-            darkVolumeXIndexes = darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3));
+            YIndexes = (inspectedROI(2):inspectedROI(2)+inspectedROI(4) - 1) + 1;
+            XIndexes = (inspectedROI(1):inspectedROI(1)+inspectedROI(3) - 1) + 1;
+            if(darkVolumeROI == 0)
+                darkVolumeROI = inspectedROI;
+            else
+                darkVolumeROI(2) = darkVolumeROI(2) - inspectedROI(2) + 1;
+                darkVolumeROI(1) = darkVolumeROI(1) - inspectedROI(1) + 1;
+            end
+            darkVolumeYIndexes = (darkVolumeROI(2):(darkVolumeROI(2)+darkVolumeROI(4)) - 1) + 1;
+            darkVolumeXIndexes = (darkVolumeROI(1):(darkVolumeROI(1)+darkVolumeROI(3)) - 1) + 1;
             darkHologram = darkHologram(YIndexes,XIndexes);
 
             darkModel = QCI_Model("darkHologram",darkHologram,obj.Wavelengths(hologramIndex),obj.PropagationDistances(hologramIndex),obj.CameraPixelSize);
