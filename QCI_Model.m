@@ -188,6 +188,21 @@ classdef QCI_Model < handle
                 error("Dimension of indexes array does not match the amount of given propagationDistances.");
             end
         end
+
+        function cameraPixelSize = getCameraPixelSize(obj)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            cameraPixelSize = obj.CameraPixelSize;
+        end
+
+        function setCameraPixelSize(obj, newCameraPixelSize)
+            % Setter for ZCoordinates
+            if(newCameraPixelSize > 0)
+                obj.CameraPixelSize = newCameraPixelSize;
+            else
+                error("Camera pixel size must be a non-negative value.");
+            end
+        end
         
         % Operations on holograms
         function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
