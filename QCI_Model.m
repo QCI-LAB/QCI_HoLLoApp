@@ -346,7 +346,7 @@ classdef QCI_Model < handle
             columnShifts = zeros(1,hologramCount);
 
             for hologramIndex = 1:(hologramCount-1)
-                [output, Greg] = dftregistration(hologramsFFT(:,:,end), hologramsFFT(:,:,hologramIndex), usfactor);
+                [output, Greg] = obj.dftregistration(hologramsFFT(:,:,end), hologramsFFT(:,:,hologramIndex), usfactor);
 
                 rowShifts(hologramIndex) = output(3);
                 columnShifts(hologramIndex) = output(4);
@@ -355,15 +355,15 @@ classdef QCI_Model < handle
 
             rowShifts(end) = 0;
             columnShifts(end) = 0;
-            fixedHolograms(:,:,end) = holograms(:,:,end);
+            fixedHolograms(:,:,end+1) = holograms(:,:,end);
         end
 
         function shiftedHologram = shiftHologram(obj, hologram, shift_x, shift_y)
-        % Funkcja przesuwa obraz 'holo' o shift_x i shift_y (w pikselach) w płaszczyźnie x,y
-        % Parametry:
-        %   holo - wejściowy obraz/hologram
-        %   shift_x, shift_y - przesunięcia w pikselach
-         
+            % Funkcja przesuwa obraz 'holo' o shift_x i shift_y (w pikselach) w płaszczyźnie x,y
+            % Parametry:
+            %   holo - wejściowy obraz/hologram
+            %   shift_x, shift_y - przesunięcia w pikselach
+             
             [Ny, Nx] = size(hologram); % Rozmiar hologramu
              
             % Siatki przestrzeni częstotliwości
@@ -602,7 +602,7 @@ classdef QCI_Model < handle
 
         end
 
-        function [output, Greg] = dftregistration(buf1ft,buf2ft,usfac)
+        function [output, Greg] = dftregistration(obj, buf1ft,buf2ft,usfac)
         % function [output Greg] = dftregistration(buf1ft,buf2ft,usfac);
         % Efficient subpixel image registration by crosscorrelation. This code
         % gives the same precision as the FFT upsampled cross correlation in a
@@ -691,7 +691,7 @@ classdef QCI_Model < handle
                 col_shift = Nc(col_shift);
             elseif usfac > 1
                 % Start with usfac == 2
-                CC = ifft2(FTpad(buf1ft.*conj(buf2ft),[2*nr,2*nc]));
+                CC = ifft2(obj.FTpad(buf1ft.*conj(buf2ft),[2*nr,2*nc]));
                 CCabs = abs(CC);
                 [row_shift, col_shift] = find(CCabs == max(CCabs(:)),1,'first');
                 CCmax = CC(row_shift,col_shift)*nr*nc;
@@ -708,7 +708,7 @@ classdef QCI_Model < handle
                     col_shift = round(col_shift*usfac)/usfac;     
                     dftshift = fix(ceil(usfac*1.5)/2); %% Center of output array at dftshift+1
                     % Matrix multiply DFT around the current shift estimate
-                    CC = conj(dftups(buf2ft.*conj(buf1ft),ceil(usfac*1.5),ceil(usfac*1.5),usfac,...
+                    CC = conj(obj.dftups(buf2ft.*conj(buf1ft),ceil(usfac*1.5),ceil(usfac*1.5),usfac,...
                         dftshift-row_shift*usfac,dftshift-col_shift*usfac));
                     % Locate maximum and map back to original pixel grid 
                     CCabs = abs(CC);
@@ -744,7 +744,8 @@ classdef QCI_Model < handle
                 Greg = buf2ft*exp(1i*diffphase);
             end
         end
-        function out=dftups(in,nor,noc,usfac,roff,coff)
+
+        function out=dftups(obj, in,nor,noc,usfac,roff,coff)
         % function out=dftups(in,nor,noc,usfac,roff,coff);
         % Upsampled DFT by matrix multiplies, can compute an upsampled DFT in just
         % a small region.
@@ -779,7 +780,7 @@ classdef QCI_Model < handle
             out=kernr*in*kernc;
         end
         
-        function [ imFTout ] = FTpad(imFT,outsize)
+        function [ imFTout ] = FTpad(obj, imFT,outsize)
             % imFTout = FTpad(imFT,outsize)
             % Pads or crops the Fourier transform to the desired ouput size. Taking 
             % care that the zero frequency is put in the correct place for the output
