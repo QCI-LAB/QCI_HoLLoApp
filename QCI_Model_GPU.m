@@ -38,11 +38,11 @@ classdef QCI_Model_GPU < QCI_Model
             end
         end
 
-        function addHologram(obj, name, hologram, wavelength, zCoordinate)
+        function addHologram(obj, name, hologram, wavelength, propagationDistances)
             obj.Names(end + 1) = name;
             obj.Holograms(:, :, end + 1) = gpuArray(hologram);
             obj.Wavelengths(end + 1) = wavelength;
-            obj.ZCoordinates(end + 1) = zCoordinate;
+            obj.PropagationDistances(end + 1) = propagationDistances;
             obj.WaveNumbers(end + 1) = 2*pi./obj.Wavelengths(end);
             
             obj.HologramsFFT(:,:,end + 1) = fft2(obj.Holograms(:,:,end));
