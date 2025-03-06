@@ -51,9 +51,9 @@ classdef QCI_Model < handle
             
             for i = 1:length(wavelengths)
                 obj.HologramsFFT(:,:,i) = fft2(obj.Holograms(:,:,i));
-                obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
+                obj.FreeSpaceImpulseMatrixes(:,:,i) = real(fftshift(obj.WaveNumbers(i) *...
                     sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
-                    (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+                    (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
             end
         end
         
@@ -182,7 +182,7 @@ classdef QCI_Model < handle
             % Setter for ZCoordinates
             if(size(propagationDistances) == size(obj.PropagationDistances))
                 obj.PropagationDistances = propagationDistances;
-            elseif(size(propagationDistances) == size(indexes))  
+            elseif(size(propagationDistances) == size(indexes))
                 obj.PropagationDistances(indexes) = propagationDistances;
             else
                 error("Dimension of indexes array does not match the amount of given propagationDistances.");
@@ -207,7 +207,7 @@ classdef QCI_Model < handle
         % Operations on holograms
         function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
             % Propagates the image with Angular Scaling method
-            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex)*obj.PropagationDistances(hologramIndex);
+            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex) * obj.PropagationDistances(hologramIndex);
             kernelExponent = kernelExponent - kernelExponent(1,1);
             %hologramPostPropagation = zeros(size(obj.Holograms,1), size(obj.Holograms,2));
 
