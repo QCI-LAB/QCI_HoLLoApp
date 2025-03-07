@@ -84,9 +84,9 @@ classdef QCI_Model < handle
             %   Detailed explanation goes here
 
             if(size(holograms, 3) == size(obj.Holograms,3))
-                    obj.Holograms = double(holograms);
-                    obj.HologramsFFT = fft2(holograms);
-            elseif(size(holograms, 3) == size(indexes))
+                obj.Holograms = double(holograms);
+                obj.HologramsFFT = fft2(holograms);
+            elseif(size(holograms, 3) == length(indexes))
                 obj.Holograms(:,:,indexes) = double(holograms);
                 obj.HologramsFFT(:,:,indexes) = fft2(holograms);
             else
@@ -142,25 +142,26 @@ classdef QCI_Model < handle
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             [ySize, xSize] = size(obj.Holograms(:,:,1));
-            if(size(wavelengths) == size(obj.Wavelengths))
+            if(length(wavelengths) == length(obj.Wavelengths))
                 for i = 1:length(wavelengths)
                     if(wavelengths(i) ~= obj.Wavelengths(i))
+                        obj.Wavelengths(i) = wavelengths(i);
+                        obj.WaveNumbers(i) = 2*pi/wavelengths(i);
                         obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
                             sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
                             (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
                     end
                 end
                 obj.Wavelengths = wavelengths;
-            elseif(size(wavelengths) == size(indexes))  
-                for i = 1:length(indexes)
-                    if(wavelengths(i) ~= obj.Wavelengths(indexes(i)))
+            elseif(length(wavelengths) == length(indexes))
+                obj.Wavelengths(indexes) = wavelengths;
+                obj.WaveNumbers(indexes) = 2*pi/wavelengths;
+                
+                for i = 1:length(indexes)       
                         obj.FreeSpaceImpulseMatrixes(:,:,indexes(i)) = fftshift(obj.WaveNumbers(indexes(i)) *...
                             sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(indexes(i))^2 *...
                             (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
-                    end
                 end
-
-                obj.Wavelengths(indexes) = wavelengths;
             else
                 error("Dimension of indexes array does not match the amount of given wavelengths.");
             end
@@ -180,9 +181,9 @@ classdef QCI_Model < handle
 
         function setPropagationDistances(obj, propagationDistances, indexes)
             % Setter for ZCoordinates
-            if(size(propagationDistances) == size(obj.PropagationDistances))
+            if(length(propagationDistances) == length(obj.PropagationDistances))
                 obj.PropagationDistances = propagationDistances;
-            elseif(size(propagationDistances) == size(indexes))
+            elseif(length(propagationDistances) == length(indexes))
                 obj.PropagationDistances(indexes) = propagationDistances;
             else
                 error("Dimension of indexes array does not match the amount of given propagationDistances.");
@@ -531,9 +532,8 @@ classdef QCI_Model < handle
             obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
 
             reconstruction = obj.propagate(intermediateHologramIndex);
-
-            obj.PropagationDistances(intermediateHologramIndex) = [];
-            obj.Holograms(:,:,intermediateHologramIndex) = [];
+            
+            obj.removeHologram(intermediateHologramIndex);
 
             if(sigma > 0)
                 obj.Holograms = hologramsUnblurred;

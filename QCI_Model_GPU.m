@@ -7,9 +7,9 @@ classdef QCI_Model_GPU < QCI_Model
     end
 
     methods
-        function obj = QCI_Model_GPU(names, holograms, wavelengths, zCoordinates, pixelSize)
+        function obj = QCI_Model_GPU(names, holograms, wavelengths, propagationDistances, pixelSize)
            holograms = gpuArray(holograms);
-           obj@QCI_Model(names, holograms, wavelengths, zCoordinates, pixelSize);
+           obj@QCI_Model(names, holograms, wavelengths, propagationDistances, pixelSize);
 
            obj.HologramsFFT = gpuArray(obj.HologramsFFT);
            obj.FreeSpaceImpulseMatrixes = gpuArray(obj.FreeSpaceImpulseMatrixes);
