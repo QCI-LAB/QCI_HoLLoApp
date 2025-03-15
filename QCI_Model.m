@@ -532,6 +532,8 @@ classdef QCI_Model < handle
             obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
 
             reconstruction = obj.propagate(intermediateHologramIndex);
+
+            reconstruction = ceil(reconstruction.^2); 
             
             obj.removeHologram(intermediateHologramIndex);
 
