@@ -23,6 +23,21 @@ classdef QCI_Model < handle
     
     methods
         function obj = QCI_Model(names, holograms, wavelengths, propagationDistances, pixelSize)
+            % QCI_Model Constructor for the QCI_Model class  
+            %  
+            %   obj = QCI_Model(names, holograms, wavelengths, propagationDistances, pixelSize)  
+            %   initializes an instance with hologram data and computes derived parameters.  
+            %  
+            %   Inputs:  
+            %       - names: (1×N string) Hologram names.  
+            %       - holograms: (M×N×K double) Hologram images.  
+            %       - wavelengths: (1×K double) Light wavelengths [μm].  
+            %       - propagationDistances: (1×K double) Axial distances [μm].  
+            %       - pixelSize: (scalar double) Camera pixel size [μm].  
+            %  
+            %   Computes spatial and inverse coordinates, wavenumbers, FFT of holograms,  
+            %   and free-space impulse matrices for hologram reconstruction.  
+            %   Initializes an empty object if no inputs are provided.  
             if nargin == 0
                 return
             end
@@ -58,8 +73,18 @@ classdef QCI_Model < handle
         end
         
         function names = getNames(obj, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % getNames Returns hologram names for given indexes  
+            %  
+            %   names = getNames(obj, indexes) returns the names of the holograms  
+            %   corresponding to the specified indexes.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - indexes: (1×N double) Indices of the requested holograms.  
+            %         Use 0 to return all names.  
+            %  
+            %   Output:  
+            %       - names: (1×N string) Selected hologram names.  
             if(indexes == 0)
                 names = obj.Names;
             else
@@ -70,8 +95,19 @@ classdef QCI_Model < handle
         end
 
         function holograms = getHolograms(obj, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % getHolograms Returns hologram images for given indexes  
+            %  
+            %   holograms = getHolograms(obj, indexes) returns the hologram images  
+            %   corresponding to the specified indexes.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - indexes: (1×N double) Indices of the requested holograms.  
+            %         Use 0 to return all holograms.  
+            %  
+            %   Output:  
+            %       - holograms: (M×N×K double) Selected hologram images.
+
             if(indexes == 0)
                 holograms = obj.Holograms;
             else
@@ -80,8 +116,20 @@ classdef QCI_Model < handle
         end
 
         function holograms = setHolograms(obj, holograms, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % setHolograms Updates hologram images and their FFT  
+            %  
+            %   setHolograms(obj, holograms, indexes) updates the hologram images  
+            %   in the object. The function checks if the size of the provided  
+            %   holograms matches the expected dimensions and updates the hologram  
+            %   data and its FFT.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - holograms: (M×N×K double) New hologram images.  
+            %       - indexes: (1×N double) Indices for which holograms should be updated.  
+            %  
+            %   Throws an error if the number of given holograms does not match the  
+            %   number of specified indexes.  
 
             if(size(holograms, 3) == size(obj.Holograms,3))
                 obj.Holograms = double(holograms);
@@ -95,6 +143,20 @@ classdef QCI_Model < handle
         end
 
         function addHologram(obj, name, hologram, wavelength, zCoordinate)
+            % addHologram Adds a new hologram to the model  
+            %  
+            %   addHologram(obj, name, hologram, wavelength, zCoordinate) adds a new hologram  
+            %   to the model with the specified name, hologram data, wavelength, and propagation  
+            %   distance. It also computes the hologram's FFT and updates the corresponding  
+            %   free-space impulse matrix.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - name: (string) Name of the new hologram.  
+            %       - hologram: (M×N double) Hologram image data.  
+            %       - wavelength: (double) Wavelength of the light used [μm].  
+            %       - zCoordinate: (double) Propagation distance [μm].
+
             obj.Names(end + 1) = name;
             obj.Holograms(:, :, end + 1) = hologram;
             obj.Wavelengths(end + 1) = wavelength;
@@ -109,6 +171,15 @@ classdef QCI_Model < handle
         end
 
         function removeHologram(obj, hologramIndex)
+            % removeHologram Removes a hologram from the model  
+            %  
+            %   removeHologram(obj, hologramIndex) removes the hologram at the specified index  
+            %   and updates the model's data accordingly. If all holograms are removed,  
+            %   it resets the coordinates and other related properties.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - hologramIndex: (scalar double) Index of the hologram to be removed. 
             obj.Holograms(:, :, hologramIndex) = [];
             obj.Wavelengths(hologramIndex) = [];
             obj.PropagationDistances(hologramIndex) = [];
@@ -128,8 +199,19 @@ classdef QCI_Model < handle
         end
 
         function wavelengths = getWavelengths(obj, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % getWavelengths Returns wavelengths for given indexes  
+            %  
+            %   wavelengths = getWavelengths(obj, indexes) returns the wavelengths  
+            %   corresponding to the specified indexes.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - indexes: (1×N double) Indices of the requested wavelengths.  
+            %         Use 0 to return all wavelengths.  
+            %  
+            %   Output:  
+            %       - wavelengths: (1×N double) Selected wavelengths.
+
             if(indexes == 0)
                 wavelengths = obj.Wavelengths;
             else
@@ -138,8 +220,21 @@ classdef QCI_Model < handle
         end
 
         function setWavelengths(obj, wavelengths, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % setWavelengths Updates wavelengths and related parameters  
+            %  
+            %   setWavelengths(obj, wavelengths, indexes) updates the wavelengths and  
+            %   computes the corresponding wavenumbers and free-space impulse matrices.  
+            %   The function checks if the provided wavelengths match the existing ones  
+            %   and updates the relevant data accordingly.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - wavelengths: (1×N double) New wavelengths to be set.  
+            %       - indexes: (1×N double) Indices of the wavelengths to be updated.  
+            %  
+            %   Throws an error if the number of given wavelengths does not match the  
+            %   number of specified indexes. 
+
             [ySize, xSize] = size(obj.Holograms(:,:,1));
             if(length(wavelengths) == length(obj.Wavelengths))
                 for i = 1:length(wavelengths)
@@ -169,8 +264,19 @@ classdef QCI_Model < handle
         end
 
         function propagationDistances = getPropagationDistances(obj, indexes)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % getPropagationDistances Returns propagation distances for given indexes  
+            %  
+            %   propagationDistances = getPropagationDistances(obj, indexes) returns the  
+            %   propagation distances corresponding to the specified indexes.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - indexes: (1×N double) Indices of the requested propagation distances.  
+            %         Use 0 to return all propagation distances.  
+            %  
+            %   Output:  
+            %       - propagationDistances: (1×N double) Selected propagation distances.
+
             if(indexes == 0)
                 propagationDistances = obj.PropagationDistances;
             else
@@ -179,7 +285,19 @@ classdef QCI_Model < handle
         end
 
         function setPropagationDistances(obj, propagationDistances, indexes)
-            % Setter for ZCoordinates
+            % setPropagationDistances Updates propagation distances  
+            %  
+            %   setPropagationDistances(obj, propagationDistances, indexes) updates the  
+            %   propagation distances for the specified indexes. If the number of provided  
+            %   distances matches the existing ones, they are updated.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - propagationDistances: (1×N double) New propagation distances.  
+            %       - indexes: (1×N double) Indices of the distances to be updated.  
+            %  
+            %   Throws an error if the number of given propagation distances does not match  
+            %   the number of specified indexes.
             if(length(propagationDistances) == length(obj.PropagationDistances))
                 obj.PropagationDistances = propagationDistances;
             elseif(length(propagationDistances) == length(indexes))
@@ -190,13 +308,28 @@ classdef QCI_Model < handle
         end
 
         function cameraPixelSize = getCameraPixelSize(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            % getCameraPixelSize Returns the camera pixel size  
+            %  
+            %   cameraPixelSize = getCameraPixelSize(obj) returns the size of the camera  
+            %   pixels used in the hologram acquisition.  
+            %  
+            %   Output:  
+            %       - cameraPixelSize: (scalar double) Size of the camera pixel [μm].
+
             cameraPixelSize = obj.CameraPixelSize;
         end
 
         function setCameraPixelSize(obj, newCameraPixelSize)
-            % Setter for ZCoordinates
+            % setCameraPixelSize Sets a new camera pixel size  
+            %  
+            %   setCameraPixelSize(obj, newCameraPixelSize) sets the camera pixel size  
+            %   to the specified value. The new value must be positive.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - newCameraPixelSize: (scalar double) New camera pixel size [μm].  
+            %  
+            %   Throws an error if the new camera pixel size is non-positive. 
             if(newCameraPixelSize > 0)
                 obj.CameraPixelSize = newCameraPixelSize;
             else
@@ -206,7 +339,23 @@ classdef QCI_Model < handle
         
         % Operations on holograms
         function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
-            % Propagates the image with Angular Scaling method
+            % propagate Propagates a hologram using the Angular Scaling method  
+            %  
+            %   hologramPostPropagation = propagate(obj, hologramIndex, willReplace) propagates  
+            %   the hologram at the specified index using the Angular Scaling method. If  
+            %   the propagation distance is negative, the propagation is inverted. The result  
+            %   is returned as a complex-valued hologram. Optionally, the propagated hologram  
+            %   can replace the original one if the `willReplace` flag is true.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - hologramIndex: (scalar double) Index of the hologram to propagate.  
+            %       - willReplace: (logical) If true, replaces the original hologram with the  
+            %         propagated one.  
+            %  
+            %   Output:  
+            %       - hologramPostPropagation: (M×N double) The propagated hologram image.
+
             kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex) * obj.PropagationDistances(hologramIndex);
             kernelExponent = kernelExponent - kernelExponent(1,1);
             %hologramPostPropagation = zeros(size(obj.Holograms,1), size(obj.Holograms,2));
@@ -237,7 +386,27 @@ classdef QCI_Model < handle
             end
         end
 
-        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = threePointShiftAndScalingCorrection(obj, referenceImages, points) 
+        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = threePointShiftAndScalingCorrection(obj, referenceImages, points)
+            % threePointShiftAndScalingCorrection Corrects holograms using a three-point shift  
+            % and scaling method  
+            %  
+            %   [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] =  
+            %   threePointShiftAndScalingCorrection(obj, referenceImages, points) applies a  
+            %   three-point shift and scaling correction to a set of holograms and reference  
+            %   images. The function computes a transformation based on matching points and  
+            %   applies it to the holograms. The corrected heights are also calculated based  
+            %   on the transformations.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - referenceImages: (M×N×P double) Set of reference images for correction.  
+            %       - points: Cell array containing sets of corresponding points for each image.  
+            %  
+            %   Outputs:  
+            %       - fixedReferenceImages: (M×N×P double) The corrected reference images.  
+            %       - fixedHolograms: (M×N×P double) The corrected holograms.  
+            %       - correctedHeights: (1×P double) The corrected propagation distances (heights).  
+            %       - tforms: Cell array of transformation objects applied to the holograms. 
             for pointIndex = 1:3
                 fixedPoints(pointIndex,:) = points{end}{pointIndex};
             end
@@ -261,18 +430,24 @@ classdef QCI_Model < handle
         end
         
         function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = automaticalShiftAndScalingCorrection(obj, referenceImages)
-        %   Align and scale holograms to reference images based on 
-        %   SURF feature matching and similarity transformation.
-        %
-        %   Inputs:
-        %       referenceImages  - 3D array of reference images (amplitude and phase).
-        %       holograms        - 3D array of holograms to align with the references.
-        %
-        %   Outputs:
-        %       fixedReferenceImages - Aligned and scaled reference images.
-        %       fixedHolograms       - Aligned and scaled holograms.
-        %       tforms               - Cell array of geometric transformations.
-            % --- Initialization ---
+            % automaticalShiftAndScalingCorrection Automatically corrects holograms using  
+            % feature-based shift and scaling alignment  
+            %  
+            %   [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] =  
+            %   automaticalShiftAndScalingCorrection(obj, referenceImages) automatically aligns  
+            %   a series of reference images and holograms by detecting and matching features.  
+            %   The transformations are estimated using a similarity transform, and the holograms  
+            %   are corrected. The corrected heights are calculated based on the transformations.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - referenceImages: (M×N×P double) Set of reference images for alignment.  
+            %  
+            %   Outputs:  
+            %       - fixedReferenceImages: (M×N×P double) The corrected reference images.  
+            %       - fixedHolograms: (M×N×P double) The corrected holograms.  
+            %       - correctedHeights: (1×P double) The corrected propagation distances (heights).  
+            %       - tforms: Cell array of transformation objects applied to the holograms.  
             if(~isempty(obj.Holograms))
                 holograms = obj.Holograms;
             else
@@ -333,7 +508,22 @@ classdef QCI_Model < handle
         end
 
         function  [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)
-            % --- Initialization ---
+            % automaticalShiftCorrection Automatically corrects shifts in holograms  
+            %  
+            %   [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)  
+            %   applies a phase correlation method to correct horizontal and vertical shifts  
+            %   between holograms. The holograms are aligned by compensating for shifts in  
+            %   rows and columns. The corrected holograms are returned along with the calculated  
+            %   shifts for each hologram.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - holograms: (M×N×P double) The set of holograms to be aligned.  
+            %  
+            %   Outputs:  
+            %       - fixedHolograms: (M×N×P double) The corrected holograms after alignment.  
+            %       - rowShifts: (1×P double) The vertical shifts for each hologram.  
+            %       - columnShifts: (1×P double) The horizontal shifts for each hologram.  
             if(isempty(holograms))
                 error("No holograms to work with.");
             end
@@ -359,69 +549,79 @@ classdef QCI_Model < handle
         end
 
         function shiftedHologram = shiftHologram(obj, hologram, shift_x, shift_y)
-            % Funkcja przesuwa obraz 'holo' o shift_x i shift_y (w pikselach) w płaszczyźnie x,y
-            % Parametry:
-            %   holo - wejściowy obraz/hologram
-            %   shift_x, shift_y - przesunięcia w pikselach
-             
-            [Ny, Nx] = size(hologram); % Rozmiar hologramu
+            % shiftHologram Shifts a hologram by specified amounts in the x and y directions
+            %  
+            %   shiftedHologram = shiftHologram(obj, hologram, shift_x, shift_y)  
+            %   applies a phase shift in the frequency domain to shift a given hologram by  
+            %   the specified amounts in the horizontal (x) and vertical (y) directions.  
+            %  
+            %   Inputs:  
+            %       - obj: Instance of QCI_Model.  
+            %       - hologram: (M×N double) The hologram to be shifted.  
+            %       - shift_x: (double) The shift in the x-direction (horizontal).  
+            %       - shift_y: (double) The shift in the y-direction (vertical).  
+            %  
+            %   Outputs:  
+            %       - shiftedHologram: (M×N double) The shifted hologram. 
+
+            [Ny, Nx] = size(hologram); % Hologram size
              
             % Siatki przestrzeni częstotliwości
-            fx = [0:Nx/2-1, -Nx/2:-1] / Nx; % Normalizowane częstotliwości x
-            fy = [0:Ny/2-1, -Ny/2:-1] / Ny; % Normalizowane częstotliwości y
+            fx = [0:Nx/2-1, -Nx/2:-1] / Nx; % Normalize x frequencies
+            fy = [0:Ny/2-1, -Ny/2:-1] / Ny; % Normalize y frequencies
             [Fx, Fy] = meshgrid(fx, fy);
              
-            % Przesunięcie fazowe w dziedzinie częstotliwości
+            % Phase shift in frequency domain
             phase_shift = exp(-1i * 2 * pi * (Fx * shift_x + Fy * shift_y));
              
-            % Przesunięcie obrazu
+            % Image shift
             shiftedHologram = ifft2(fft2(hologram) .* phase_shift);
         end
 
         function reconstruction = IGA(obj, iter, sigma)
-        % Iterative Gabor Averagin (IGA) - method for phase retrieval from multiple
-        % in-line holograms collected with different defocus and/or wavelength.
-        % Algorithm was designed to work with low signal-to-noise-ratio data
-        %
-        % Inputs:
-        %   H - 3D array containing registered in-line holograms (at least 2
-        %       hologram are reguired)
-        %   z - vector containing defocus distances for each hologram 
-        %       (AS_propagate_p(H(:,:,n),z(n),lambda(n),dx) should give the
-        %       in-focus reconstruction)
-        %   lambda - vector containing wavelengths used to collect each in-line
-        %       hologram
-        %   dx - effective pixel size of the camera (camera pixel size divided by 
-        %       system magnification)
-        %   sigma - denoising factor that balances the twin image and shot noise
-        %       removal. For larger sigma, shot noise should be minimized more
-        %       effectively, while twin image is minimized better for smaller
-        %       sigma. Default - sigma = 2; 
-        %       sigma = 0 - GS method. sigma = inf - GA method. 
-        %       Recommended values:
-        %       sigma = 0 - noise-free data (only simulations)
-        %       sigma = 1 - good quality data with insignificant shot noise
-        %       sigma = 2 - regular or noisy data
-        %       sigma = 4 - very strong shot noise, but twin image still present
-        %       sigma = inf - shot noise larger than signal
-        %   iter - number of iterations. Default - iter = 5;
-        % Output:
-        %   R - reconstructed complex optical field at the sample plane. 
-        %       abs(R) -> amplitude; angle(R) -> phase.
-        % 
-        % More details at/cite as:
-        %   M. Rogalski, P. Arcab, E. Wdowiak, J. Á. Picazo-Bueno, V. Micó, 
-        %   M. Józwik, M. Trusiak, "Hybrid iterating-averaging low photon budget 
-        %   Gabor holographic microscopy", Submitted 2024
-        % 
-        % Created by:
-        %   Mikołaj Rogalski
-        %   Warsaw University of Technology, Institute of Micromechanics and
-        %   Photonics
-        %   mikolaj.rogalski.dokt@pw.edu.pl
-        % 
-        % Last modified:
-        %   04.09.2024
+            % Iterative Gabor Averagin (IGA) - method for phase retrieval from multiple
+            % in-line holograms collected with different defocus and/or wavelength.
+            % Algorithm was designed to work with low signal-to-noise-ratio data
+            %
+            % Inputs:
+            %   H - 3D array containing registered in-line holograms (at least 2
+            %       hologram are reguired)
+            %   z - vector containing defocus distances for each hologram 
+            %       (AS_propagate_p(H(:,:,n),z(n),lambda(n),dx) should give the
+            %       in-focus reconstruction)
+            %   lambda - vector containing wavelengths used to collect each in-line
+            %       hologram
+            %   dx - effective pixel size of the camera (camera pixel size divided by 
+            %       system magnification)
+            %   sigma - denoising factor that balances the twin image and shot noise
+            %       removal. For larger sigma, shot noise should be minimized more
+            %       effectively, while twin image is minimized better for smaller
+            %       sigma. Default - sigma = 2; 
+            %       sigma = 0 - GS method. sigma = inf - GA method. 
+            %       Recommended values:
+            %       sigma = 0 - noise-free data (only simulations)
+            %       sigma = 1 - good quality data with insignificant shot noise
+            %       sigma = 2 - regular or noisy data
+            %       sigma = 4 - very strong shot noise, but twin image still present
+            %       sigma = inf - shot noise larger than signal
+            %   iter - number of iterations. Default - iter = 5;
+            % Output:
+            %   R - reconstructed complex optical field at the sample plane. 
+            %       abs(R) -> amplitude; angle(R) -> phase.
+            % 
+            % More details at/cite as:
+            %   M. Rogalski, P. Arcab, E. Wdowiak, J. Á. Picazo-Bueno, V. Micó, 
+            %   M. Józwik, M. Trusiak, "Hybrid iterating-averaging low photon budget 
+            %   Gabor holographic microscopy", Submitted 2024
+            % 
+            % Created by:
+            %   Mikołaj Rogalski
+            %   Warsaw University of Technology, Institute of Micromechanics and
+            %   Photonics
+            %   mikolaj.rogalski.dokt@pw.edu.pl
+            % 
+            % Last modified:
+            %   04.09.2024
             
             if sigma == 0 % GS method
                 reconstruction = obj.GerchbergSaxton(iter, sigma);
@@ -438,8 +638,24 @@ classdef QCI_Model < handle
             end
         end
         
-        function reconstruction = GerchbergSaxton(obj, iter, sigma) 
-            % Multi-height Gerchberg-Saxton in-line holography phase retrieval
+        function reconstruction = GerchbergSaxton(obj, iter, sigma)
+            % GerchbergSaxton Reconstructs an object field using the Gerchberg-Saxton algorithm
+            %
+            %   reconstruction = GerchbergSaxton(obj, iter, sigma)
+            %   Reconstructs an object field from holograms using the Gerchberg-Saxton algorithm.
+            %   This method uses an iterative approach to update the phase of the object
+            %   field and backpropagate the reconstructed optical field to the object plane.
+            %
+            %   Inputs:
+            %       - obj: Instance of QCI_Model.
+            %       - iter: (integer) Number of iterations for the algorithm.
+            %       - sigma: (double) Standard deviation for Gaussian blurring of holograms.
+            %                 If sigma is greater than 0, the holograms will be blurred before processing.
+            %
+            %   Outputs:
+            %       - reconstruction: (M×N double) The reconstructed object field after applying
+            %                         the Gerchberg-Saxton algorithm.
+            
             if(sigma > 0)
                 hologramsUnblurred = obj.Holograms;
                 hologramsBlurred = imgaussfilt(hologramsUnblurred, sigma);
@@ -542,7 +758,19 @@ classdef QCI_Model < handle
         end
 
         function reconstruction = GaborAveraging(obj)
-            % Gabor averaging in-line holography reconstruction
+            % GaborAveraging - Gabor averaging in-line holography reconstruction
+            %
+            %   reconstruction = GaborAveraging(obj)
+            %   This method performs Gabor averaging, a technique used to reconstruct 
+            %   an object field from multiple holograms by backpropagating each hologram 
+            %   to the object plane and averaging the results.
+            %
+            %   The result is a reconstruction that incorporates the phase and amplitude 
+            %   of the optical field from all holograms.
+            %
+            %   Outputs:
+            %       - reconstruction: (M×N double) The final averaged object field reconstruction
+            %                         after applying the Gabor averaging technique.
             reconstruction = zeros(size(obj.Holograms(:,:,1)));
             hologramCount = size(obj.Holograms, 3);
             obj.PropagationDistances = -obj.PropagationDistances;
@@ -560,8 +788,31 @@ classdef QCI_Model < handle
 
             obj.PropagationDistances = -obj.PropagationDistances;
         end
+
         % DarkFocus version 3
         function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
+            % DarkFocus - Optimizing focus by evaluating the variance of gradient magnitudes in the dark volume
+            %
+            %   [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
+            %
+            %   This method evaluates the sharpness of a hologram over a given range of focus 
+            %   by calculating the variance of the gradient magnitudes in a selected dark volume region.
+            %   The goal is to identify the best focus by finding the range that maximizes focus sharpness.
+            %
+            %   Inputs:
+            %       - hologramIndex: (int) The index of the hologram to process.
+            %       - range: (1xN array) The range of propagation distances (Z-steps) to inspect for focus.
+            %       - inspectedROI: (1x4 array) The region of interest (ROI) within the hologram for inspection.
+            %       - darkVolumeROI: (1x4 array) The ROI for calculating the dark volume (default is the whole inspectedROI).
+            %
+            %   Outputs:
+            %       - bestFocusZ: (double) The propagation distance (Z-coordinate) corresponding to the best focus.
+            %       - focusCurves: (1xN array) The calculated focus curves showing sharpness over the range.
+            %       - DarkVolume: (MxN array) The amplitude of the dark volume at the best focus.
+            %
+            %   The function uses a model to propagate the hologram through the range and computes
+            %   the variance of gradient magnitudes at each step to find the best focus.
+
             background = imgaussfilt(obj.Holograms(:,:,hologramIndex), 30);
             darkHologram = obj.Holograms(:,:,hologramIndex) - background;
 
@@ -781,7 +1032,7 @@ classdef QCI_Model < handle
             out=kernr*in*kernc;
         end
         
-        function [ imFTout ] = FTpad(obj, imFT,outsize)
+        function [ imFTout ] = FTpad(obj, imFT,outsize)980919
             % imFTout = FTpad(imFT,outsize)
             % Pads or crops the Fourier transform to the desired ouput size. Taking 
             % care that the zero frequency is put in the correct place for the output
