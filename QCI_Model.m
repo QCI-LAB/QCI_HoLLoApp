@@ -94,7 +94,6 @@ classdef QCI_Model < handle
             end
         end
 
-
         function addHologram(obj, name, hologram, wavelength, zCoordinate)
             obj.Names(end + 1) = name;
             obj.Holograms(:, :, end + 1) = hologram;
@@ -238,7 +237,7 @@ classdef QCI_Model < handle
             end
         end
 
-        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = ThreePointShiftAndScalingCorrection(obj, referenceImages, points) 
+        function [fixedReferenceImages, fixedHolograms, correctedHeights, tforms] = threePointShiftAndScalingCorrection(obj, referenceImages, points) 
             for pointIndex = 1:3
                 fixedPoints(pointIndex,:) = points{end}{pointIndex};
             end
