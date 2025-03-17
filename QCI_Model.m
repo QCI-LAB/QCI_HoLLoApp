@@ -1032,7 +1032,7 @@ classdef QCI_Model < handle
             out=kernr*in*kernc;
         end
         
-        function [ imFTout ] = FTpad(obj, imFT,outsize)980919
+        function [ imFTout ] = FTpad(obj, imFT,outsize)
             % imFTout = FTpad(imFT,outsize)
             % Pads or crops the Fourier transform to the desired ouput size. Taking 
             % care that the zero frequency is put in the correct place for the output
