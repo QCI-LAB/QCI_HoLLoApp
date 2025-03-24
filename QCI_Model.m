@@ -37,10 +37,12 @@ classdef QCI_Model < handle
             %  
             %   Computes spatial and inverse coordinates, wavenumbers, FFT of holograms,  
             %   and free-space impulse matrices for hologram reconstruction.  
-            %   Initializes an empty object if no inputs are provided.  
+            %   Initializes an empty object if no inputs are provided.
+
             if nargin == 0
                 return
             end
+            
             %QCI_MODEL Construct an instance of this class
             %   Detailed explanation goes here
             %obj.Names = strings(1,length(names));
