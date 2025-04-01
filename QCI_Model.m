@@ -4,7 +4,7 @@ classdef QCI_Model < handle
     
     properties (Access = protected)
         %Initial Data
-        Names                   (1,:) string = []
+        Names                   (1,:) string                     = []
         Holograms               (:,:,:) double                   = []       % Hologram image (matrix)
         Wavelengths             (1,:) double {mustBeNonnegative} = []       % Wavelength of light used [micro meters]
         PropagationDistances    (1,:) double                     = []       % Distance from CCD to sample [micro meters] on the optical axis
@@ -43,9 +43,6 @@ classdef QCI_Model < handle
                 return
             end
             
-            %QCI_MODEL Construct an instance of this class
-            %   Detailed explanation goes here
-            %obj.Names = strings(1,length(names));
             obj.Names = names;
             
             for i = 1:length(wavelengths)
@@ -96,6 +93,31 @@ classdef QCI_Model < handle
             return
         end
 
+        function setNames(obj, names, indexes)
+            % setNames Updates the Names property for the given indexes
+            %
+            %   setNames(obj, names, indexes) updates the Names property of the object.
+            %   If indexes is 0, the entire Names property is replaced with the provided names.
+            %   Otherwise, only the entries at the specified indexes are updated.
+            %
+            %   Inputs:
+            %       - obj: Instance of the class.
+            %       - names: (e.g., cell array or string array) The new names to be set.
+            %       - indexes: (1×N double) Indices where the names should be updated.
+            %         Use 0 to replace all names.
+            %
+            %   Output:
+            %       None (the method updates the object's Names property directly).
+            
+            if(indexes == 0)
+                obj.Names = names;
+            else
+                obj.Names(indexes) = names;
+            end
+     
+            return
+        end
+
         function holograms = getHolograms(obj, indexes)
             % getHolograms Returns hologram images for given indexes  
             %  
@@ -116,8 +138,9 @@ classdef QCI_Model < handle
                 holograms = obj.Holograms(:,:, indexes);
             end
         end
+        
 
-        function holograms = setHolograms(obj, holograms, indexes)
+        function setHolograms(obj, holograms, indexes)
             % setHolograms Updates hologram images and their FFT  
             %  
             %   setHolograms(obj, holograms, indexes) updates the hologram images  
