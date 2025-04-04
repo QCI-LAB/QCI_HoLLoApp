@@ -8,8 +8,8 @@ classdef QCI_Model < handle
         Holograms               (:,:,:) double                   = []       % Hologram image (matrix)
         Wavelengths             (1,:) double {mustBeNonnegative} = []       % Wavelength of light used [micro meters]
         PropagationDistances    (1,:) double                     = []       % Distance from CCD to sample [micro meters] on the optical axis
-        CameraPixelSize         (1,1) double = 1                            % Size of a pixel on the CCD camera used to obtain the hologram
-        MediumRefractiveIndex   (1,1) double = 1                            % Refractive index of the medium in which the hologram was taken (assume air)
+        CameraPixelSize         (1,1) double                     = 1        % Size of a pixel on the CCD camera used to obtain the hologram
+        MediumRefractiveIndex   (1,1) double                     = 1        % Refractive index of the medium in which the hologram was taken (assume air)
 
         % Derrived data
         YCoordinates            (1,:) double {mustBeNonnegative} = []       % Y hologram coordinates in physical units [micro meters]. Y axis points down from the left upper corner.
