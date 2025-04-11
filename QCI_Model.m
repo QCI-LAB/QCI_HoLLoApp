@@ -492,9 +492,8 @@ classdef QCI_Model < handle
             correctedHeights(end) = obj.PropagationDistances(end);
             
             % Detect features in the fixed reference image
-            featureDetectionThreshold = 10000;
-            ptsFixed = detectSURFFeatures(referenceImageFixed, 'MetricThreshold', featureDetectionThreshold);
-            [featuresFixed, validPtsFixed] = extractFeatures(referenceImageFixed, ptsFixed);
+            estimator = getAffineEstimator(referenceImageFixed, "SURF");
+            estimator.params.MetricThreshold= 10000;
         
             % --- Loop through all images except the last one ---
             for k = 1:imageNumber-1
@@ -502,21 +501,7 @@ classdef QCI_Model < handle
                 distortedImage = -angle(referenceImages(:, :, k));
                 distortedHologram = holograms(:, :, k);
         
-                % Step 1: Detect and extract features
-                ptsDistorted = detectSURFFeatures(distortedImage, 'MetricThreshold', featureDetectionThreshold);
-                [featuresDistorted, validPtsDistorted] = extractFeatures(distortedImage, ptsDistorted);
-        
-                % Step 2: Match features
-                indexPairs = matchFeaturesInRadius(featuresFixed, featuresDistorted, ...
-                                                   validPtsDistorted.Location, validPtsFixed.Location, 150);
-        
-                % Retrieve matched points
-                matchedFixed = validPtsFixed(indexPairs(:,1));
-                matchedDistorted = validPtsDistorted(indexPairs(:,2));
-        
-                % Step 3: Estimate geometric transformation
-                [tform, inlierIdx] = estimateGeometricTransform2D(matchedDistorted, ...
-                                                                 matchedFixed, 'similarity');
+                tform = estimator.getAffineMatrix(distortedImage);
         
                 % Step 4: Apply transformation to images and holograms
                 Routput = imref2d(size(referenceImageFixed));
