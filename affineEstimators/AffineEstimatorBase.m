@@ -75,7 +75,7 @@ classdef AffineEstimatorBase < handle
             matchedPoints_new = validPoints_new(indexPairs(:, 2));
         
             [tform, ~, ~] = estimateGeometricTransform2D(... 
-                matchedPoints_new, matchedPoints_base, 'projective');
+                matchedPoints_new, matchedPoints_base, 'affine');
         end
 
         function showMatchedPoints(obj, image_resized, matchedPoints_base, matchedPoints_new)

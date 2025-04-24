@@ -14,6 +14,8 @@ classdef AffineEstimatorKAZE < AffineEstimatorBase
             obj.params.NumOctaves = 3;
             obj.params.NumScaleLevels = 4;
 
+            obj.params.Diffusion = "region";
+
             if ~isempty(image_base)
                 obj.setNewImage(image_base); % teraz już można bezpiecznie
             end
@@ -23,7 +25,8 @@ classdef AffineEstimatorKAZE < AffineEstimatorBase
             points = detectKAZEFeatures(image, ...
                                         'Threshold', obj.params.Threshold, ...
                                         'NumOctaves', obj.params.NumOctaves, ...
-                                        'NumScaleLevels', obj.params.NumScaleLevels);
+                                        'NumScaleLevels', obj.params.NumScaleLevels, ...
+                                        'Diffusion', obj.params.Diffusion);
             [features_new, validPoints_new] = extractFeatures(image, points);
         end
     end

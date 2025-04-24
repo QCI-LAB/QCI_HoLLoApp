@@ -486,19 +486,19 @@ classdef QCI_Model < handle
             correctedHeights = zeros(1,imageNumber);
         
             % Select the last reference image as the alignment target
-            referenceImageFixed = -angle(referenceImages(:, :, end));
+            referenceImageFixed = preprocessHologram(referenceImages(:, :, end));
             fixedReferenceImages(:, :, end) = referenceImageFixed;
             fixedHolograms(:, :, end) = holograms(:, :, end);
             correctedHeights(end) = obj.PropagationDistances(end);
             
             % Detect features in the fixed reference image
-            estimator = getAffineEstimator(referenceImageFixed, "SURF");
-            estimator.params.MetricThreshold= 10000;
+            estimator = getAffineEstimator(referenceImageFixed, "KAZE");
+            %estimator.params.MetricThreshold= 10000;
         
             % --- Loop through all images except the last one ---
             for k = 1:imageNumber-1
                 % Current distorted reference image and hologram
-                distortedImage = -angle(referenceImages(:, :, k));
+                distortedImage = preprocessHologram(referenceImages(:, :, k));
                 distortedHologram = holograms(:, :, k);
         
                 tform = estimator.getAffineMatrix(distortedImage);
@@ -507,6 +507,9 @@ classdef QCI_Model < handle
                 Routput = imref2d(size(referenceImageFixed));
                 fixedReferenceImages(:, :, k) = imwarp(distortedImage, tform, 'OutputView', Routput);
                 fixedHolograms(:, :, k) = imwarp(distortedHologram, tform, 'OutputView', Routput);
+                
+                showResult(referenceImageFixed, distortedImage, tform); %TEMP
+
                 tforms{k} = tform;
                 correctedHeights(k) = round(obj.PropagationDistances(k).*tform.T(1,1).^2);
         
@@ -1081,3 +1084,18 @@ classdef QCI_Model < handle
     end
 end
 
+function imageProcessed = preprocessHologram(image)
+    imageProcessed = (angle(image) + pi)/(2*pi);
+    imageProcessed = imgradient(imageProcessed, 'Sobel');
+end
+
+
+function showResult(imageOrigin, imageDistorted, tform) %TEMP
+    outputView = imref2d(size(imageOrigin));
+    warpedImage = imwarp(imageDistorted, tform, 'OutputView', outputView);
+
+    figure()
+    imshowpair(imageOrigin, warpedImage, 'falsecolor');
+    colormap('jet');
+    title('Result of affine transformation');
+end
