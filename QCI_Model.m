@@ -486,42 +486,30 @@ classdef QCI_Model < handle
             correctedHeights = zeros(1,imageNumber);
         
             % Select the last reference image as the alignment target
-            referenceImageFixed = -angle(referenceImages(:, :, end));
+            referenceImageFixed = preprocessHologram(referenceImages(:, :, end));
             fixedReferenceImages(:, :, end) = referenceImageFixed;
             fixedHolograms(:, :, end) = holograms(:, :, end);
             correctedHeights(end) = obj.PropagationDistances(end);
             
             % Detect features in the fixed reference image
-            featureDetectionThreshold = 10000;
-            ptsFixed = detectSURFFeatures(referenceImageFixed, 'MetricThreshold', featureDetectionThreshold);
-            [featuresFixed, validPtsFixed] = extractFeatures(referenceImageFixed, ptsFixed);
+            estimator = getAffineEstimator(referenceImageFixed, "KAZE");
+            %estimator.params.MetricThreshold= 10000;
         
             % --- Loop through all images except the last one ---
             for k = 1:imageNumber-1
                 % Current distorted reference image and hologram
-                distortedImage = -angle(referenceImages(:, :, k));
+                distortedImage = preprocessHologram(referenceImages(:, :, k));
                 distortedHologram = holograms(:, :, k);
         
-                % Step 1: Detect and extract features
-                ptsDistorted = detectSURFFeatures(distortedImage, 'MetricThreshold', featureDetectionThreshold);
-                [featuresDistorted, validPtsDistorted] = extractFeatures(distortedImage, ptsDistorted);
-        
-                % Step 2: Match features
-                indexPairs = matchFeaturesInRadius(featuresFixed, featuresDistorted, ...
-                                                   validPtsDistorted.Location, validPtsFixed.Location, 150);
-        
-                % Retrieve matched points
-                matchedFixed = validPtsFixed(indexPairs(:,1));
-                matchedDistorted = validPtsDistorted(indexPairs(:,2));
-        
-                % Step 3: Estimate geometric transformation
-                [tform, inlierIdx] = estimateGeometricTransform2D(matchedDistorted, ...
-                                                                 matchedFixed, 'similarity');
+                tform = estimator.getAffineMatrix(distortedImage);
         
                 % Step 4: Apply transformation to images and holograms
                 Routput = imref2d(size(referenceImageFixed));
                 fixedReferenceImages(:, :, k) = imwarp(distortedImage, tform, 'OutputView', Routput);
                 fixedHolograms(:, :, k) = imwarp(distortedHologram, tform, 'OutputView', Routput);
+                
+                showResult(referenceImageFixed, distortedImage, tform); %TEMP
+
                 tforms{k} = tform;
                 correctedHeights(k) = round(obj.PropagationDistances(k).*tform.T(1,1).^2);
         
@@ -1096,3 +1084,18 @@ classdef QCI_Model < handle
     end
 end
 
+function imageProcessed = preprocessHologram(image)
+    imageProcessed = (angle(image) + pi)/(2*pi);
+    imageProcessed = imgradient(imageProcessed, 'Sobel');
+end
+
+
+function showResult(imageOrigin, imageDistorted, tform) %TEMP
+    outputView = imref2d(size(imageOrigin));
+    warpedImage = imwarp(imageDistorted, tform, 'OutputView', outputView);
+
+    figure()
+    imshowpair(imageOrigin, warpedImage, 'falsecolor');
+    colormap('jet');
+    title('Result of affine transformation');
+end
