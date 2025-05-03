@@ -803,7 +803,7 @@ classdef QCI_Model < handle
         end
 
         % DarkFocus version 3
-        function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
+        function [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI, isAmplitude)
             % DarkFocus - Optimizing focus by evaluating the variance of gradient magnitudes in the dark volume
             %
             %   [bestFocusZ, focusCurves, DarkVolume] = DarkFocus(obj, hologramIndex, range, inspectedROI, darkVolumeROI)
@@ -852,8 +852,12 @@ classdef QCI_Model < handle
                 darkModel.setPropagationDistances(range(rangeIndex),1);
                 Obj1 = darkModel.propagate(1);
                 % DarkFocus
-                amp = abs(Obj1);
-                DarkVolume(:,:,rangeIndex) = amp(darkVolumeYIndexes, darkVolumeXIndexes); %angle(Obj1);%
+                if isAmplitude == 1
+                    img = abs(Obj1);
+                else
+                    img = angle(Obj1);
+                end
+                DarkVolume(:,:,rangeIndex) = img(darkVolumeYIndexes, darkVolumeXIndexes); %angle(Obj1);%
                 [gx, gy] = gradient(DarkVolume(:,:,rangeIndex));
                 grad = gx.^2+gy.^2;
                 DarkFocus(rangeIndex) = var(grad(:));
