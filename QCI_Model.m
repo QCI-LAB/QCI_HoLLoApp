@@ -508,7 +508,7 @@ classdef QCI_Model < handle
                 fixedReferenceImages(:, :, k) = imwarp(distortedImage, tform, 'OutputView', Routput);
                 fixedHolograms(:, :, k) = imwarp(distortedHologram, tform, 'OutputView', Routput);
                 
-                showResult(referenceImageFixed, distortedImage, tform); %TEMP
+                %showResult(referenceImageFixed, distortedImage, tform); %TEMP
 
                 tforms{k} = tform;
                 correctedHeights(k) = round(obj.PropagationDistances(k).*tform.T(1,1).^2);
