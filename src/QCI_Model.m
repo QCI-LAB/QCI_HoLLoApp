@@ -364,10 +364,10 @@ classdef QCI_Model < handle
         
         % Operations on holograms
         function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
-            % propagate Propagates a hologram using the Angular Scaling method  
+            % propagate Propagates a hologram using the Angular Spectrum method  
             %  
             %   hologramPostPropagation = propagate(obj, hologramIndex, willReplace) propagates  
-            %   the hologram at the specified index using the Angular Scaling method. If  
+            %   the hologram at the specified index using the Angular Spectrum method. If  
             %   the propagation distance is negative, the propagation is inverted. The result  
             %   is returned as a complex-valued hologram. Optionally, the propagated hologram  
             %   can replace the original one if the `willReplace` flag is true.  
