@@ -57,13 +57,13 @@ classdef QCI_Model < handle
             % Deriving data
             obj.YCoordinates = (0:(ySize-1))*obj.CameraPixelSize;
             obj.XCoordinates = (0:(xSize-1))*obj.CameraPixelSize;
-            inverseStepY = 1/ySize/pixelSize;
-            inverseStepX = 1/xSize/pixelSize;
+            inverseStepY = 1/ySize/obj.CameraPixelSize;
+            inverseStepX = 1/xSize/obj.CameraPixelSize;
             obj.YInverseCoordinates =  -ySize/2*inverseStepY:inverseStepY:(ySize/2 - 1)*inverseStepY;
             obj.XInverseCoordinates =  -xSize/2*inverseStepX:inverseStepX:(xSize/2 - 1)*inverseStepX;
             obj.WaveNumbers = 2*pi./obj.Wavelengths;
             
-            for i = 1:length(wavelengths)
+            for i = 1:length(obj.Wavelengths)
                 obj.HologramsFFT(:,:,i) = fft2(obj.Holograms(:,:,i));
                 obj.FreeSpaceImpulseMatrixes(:,:,i) = real(fftshift(obj.WaveNumbers(i) *...
                     sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
@@ -354,9 +354,24 @@ classdef QCI_Model < handle
             %       - obj: Instance of QCI_Model.  
             %       - newCameraPixelSize: (scalar double) New camera pixel size [μm].  
             %  
-            %   Throws an error if the new camera pixel size is non-positive. 
+            %   Throws an error if the new camera pixel size is non-positive.
             if(newCameraPixelSize > 0)
+                [ySize, xSize] = size(obj.Holograms(:,:,1));
                 obj.CameraPixelSize = newCameraPixelSize;
+                % Deriving data
+                obj.YCoordinates = (0:(ySize-1))*obj.CameraPixelSize;
+                obj.XCoordinates = (0:(xSize-1))*obj.CameraPixelSize;
+                inverseStepY = 1/ySize/obj.CameraPixelSize;
+                inverseStepX = 1/xSize/obj.CameraPixelSize;
+                obj.YInverseCoordinates =  -ySize/2*inverseStepY:inverseStepY:(ySize/2 - 1)*inverseStepY;
+                obj.XInverseCoordinates =  -xSize/2*inverseStepX:inverseStepX:(xSize/2 - 1)*inverseStepX;
+                obj.WaveNumbers = 2*pi./obj.Wavelengths;
+                
+                for i = 1:length(obj.Wavelengths)
+                    obj.FreeSpaceImpulseMatrixes(:,:,i) = real(fftshift(obj.WaveNumbers(i) *...
+                        sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                        (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                end
             else
                 error("Camera pixel size must be a non-negative value.");
             end
