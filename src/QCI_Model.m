@@ -17,7 +17,7 @@ classdef QCI_Model < handle
         YInverseCoordinates     (1,:) double                     = []       % Y hologram coordinates in inverse space;
         XInverseCoordinates     (1,:) double                     = []       % X hologram coordinates in inverse space;
         WaveNumbers             (1,:) double {mustBeNonnegative} = []       % Wavenumber in [1/micrometer = 1e6 m]
-        FreeSpaceImpulseMatrixes(:,:,:) double                   = []
+        PropagationKernels      (:,:,:) double                   = []
         HologramsFFT            (:,:,:)                          = []
     end
     
@@ -44,8 +44,8 @@ classdef QCI_Model < handle
             end
             
             obj.Names = names;
-            
-            for i = 1:length(wavelengths)
+            hologramCount = size(holograms,3);
+            for i = 1:hologramCount
                 obj.Holograms(:,:,i) = holograms(:,:,i);
             end
 
@@ -62,12 +62,16 @@ classdef QCI_Model < handle
             obj.YInverseCoordinates =  -ySize/2*inverseStepY:inverseStepY:(ySize/2 - 1)*inverseStepY;
             obj.XInverseCoordinates =  -xSize/2*inverseStepX:inverseStepX:(xSize/2 - 1)*inverseStepX;
             obj.WaveNumbers = 2*pi./obj.Wavelengths;
+
+            obj.PropagationKernels = zeros(ySize, xSize, hologramCount);
             
-            for i = 1:length(obj.Wavelengths)
+            for i = 1:hologramCount
                 obj.HologramsFFT(:,:,i) = fft2(obj.Holograms(:,:,i));
-                obj.FreeSpaceImpulseMatrixes(:,:,i) = real(fftshift(obj.WaveNumbers(i) *...
+                phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
                     sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
                     (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                phi = phi - phi(1,1);
+                obj.PropagationKernels(:,:,i) = exp(1i*phi);
             end
         end
         
@@ -190,9 +194,12 @@ classdef QCI_Model < handle
             
             obj.HologramsFFT(:,:,end + 1) = fft2(obj.Holograms(:,:,end));
             [ySize, xSize] = size(obj.Holograms(:, :, 1));
-            obj.FreeSpaceImpulseMatrixes(:,:,end + 1) = fftshift(obj.WaveNumbers(end) *...
-                sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(end)^2 *...
-                (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+
+            phi = real(fftshift(obj.WaveNumbers(end + 1) *abs(propagationDistances(end + 1))*...
+                    sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(end + 1)^2 *...
+                    (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+            phi = phi - phi(1,1);
+            obj.PropagationKernels(:,:,end + 1) = exp(1i*phi);
         end
 
         function removeHologram(obj, hologramIndex)
@@ -211,7 +218,7 @@ classdef QCI_Model < handle
             obj.WaveNumbers(hologramIndex) = [];
             
             obj.HologramsFFT(:, :, hologramIndex) = [];
-            obj.FreeSpaceImpulseMatrixes(:, :, hologramIndex) = [];
+            obj.PropagationKernels(:, :, hologramIndex) = [];
 
             if(isempty(obj.Holograms))
                 obj.XInverseCoordinates = [];
@@ -266,9 +273,11 @@ classdef QCI_Model < handle
                     if(wavelengths(i) ~= obj.Wavelengths(i))
                         obj.Wavelengths(i) = wavelengths(i);
                         obj.WaveNumbers(i) = 2*pi/wavelengths(i);
-                        obj.FreeSpaceImpulseMatrixes(:,:,i) = fftshift(obj.WaveNumbers(i) *...
-                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
-                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+                        phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                                    sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                                    (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                        phi = phi - phi(1,1);
+                        obj.PropagationKernels(:,:,i) = exp(1i*phi);
                     end
                 end
                 obj.Wavelengths = wavelengths;
@@ -277,9 +286,11 @@ classdef QCI_Model < handle
                 obj.WaveNumbers(indexes) = 2*pi/wavelengths;
                 
                 for i = 1:length(indexes)       
-                        obj.FreeSpaceImpulseMatrixes(:,:,indexes(i)) = fftshift(obj.WaveNumbers(indexes(i)) *...
-                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(indexes(i))^2 *...
-                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize))));
+                    phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                                sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                                (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                    phi = phi - phi(1,1);
+                    obj.PropagationKernels(:,:,i) = exp(1i*phi);
                 end
             else
                 error("Dimension of indexes array does not match the amount of given wavelengths.");
@@ -323,10 +334,29 @@ classdef QCI_Model < handle
             %  
             %   Throws an error if the number of given propagation distances does not match  
             %   the number of specified indexes.
+            [ySize, xSize] = size(obj.Holograms(:,:,1));
             if(length(propagationDistances) == length(obj.PropagationDistances))
-                obj.PropagationDistances = propagationDistances;
+                for i =1:length(propagationDistances)
+                    if(propagationDistances(i)~=obj.PropagationDistances(i))
+                        obj.PropagationDistances(i) = propagationDistances(i);
+                        phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                        phi = phi - phi(1,1);
+                        obj.PropagationKernels(:,:,i) = exp(1i*phi);
+                    end
+                end
             elseif(length(propagationDistances) == length(indexes))
-                obj.PropagationDistances(indexes) = propagationDistances;
+                for i = indexes
+                    if(propagationDistances(i)~=obj.PropagationDistances(i))
+                        obj.PropagationDistances(i) = propagationDistances(i);
+                        phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                            sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                            (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                        phi = phi - phi(1,1);
+                        obj.PropagationKernels(:,:,i) = exp(1i*phi);
+                    end
+                end
             else
                 error("Dimension of indexes array does not match the amount of given propagationDistances.");
             end
@@ -368,9 +398,11 @@ classdef QCI_Model < handle
                 obj.WaveNumbers = 2*pi./obj.Wavelengths;
                 
                 for i = 1:length(obj.Wavelengths)
-                    obj.FreeSpaceImpulseMatrixes(:,:,i) = real(fftshift(obj.WaveNumbers(i) *...
-                        sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
-                        (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                    phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                                sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
+                                (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
+                    phi = phi - phi(1,1);
+                    obj.PropagationKernels(:,:,i) = exp(1i*phi);
                 end
             else
                 error("Camera pixel size must be a non-negative value.");
@@ -378,7 +410,7 @@ classdef QCI_Model < handle
         end
         
         % Operations on holograms
-        function hologramPostPropagation = propagate(obj, hologramIndex, willReplace)
+        function hologramPostPropagation = propagate(obj, hologramIndex, backpropagate)
             % propagate Propagates a hologram using the Angular Spectrum method  
             %  
             %   hologramPostPropagation = propagate(obj, hologramIndex, willReplace) propagates  
@@ -395,34 +427,44 @@ classdef QCI_Model < handle
             %  
             %   Output:  
             %       - hologramPostPropagation: (M×N double) The propagated hologram image.
+            if(nargin <3) 
+                backpropagate = 0; 
+            end
 
-            kernelExponent = obj.FreeSpaceImpulseMatrixes(:,:,hologramIndex) * obj.PropagationDistances(hologramIndex);
-            kernelExponent = kernelExponent - kernelExponent(1,1);
-            %hologramPostPropagation = zeros(size(obj.Holograms,1), size(obj.Holograms,2));
+            kernel = obj.PropagationKernels(:,:,hologramIndex);
 
-            if(obj.PropagationDistances(hologramIndex)<0)
-                kernel = exp(-1i*kernelExponent);
-                
-                FT_Uout = conj(obj.HologramsFFT(:,:, hologramIndex));
-                FT_Uout = flip(flip(FT_Uout, 1), 2);  % Odbicie w pionie i poziomie
-                FT_Uout = circshift(FT_Uout, [1, 1]); % Przesunięcie o 1 piksel
-
-                propagatedFFT = kernel.*FT_Uout;
-
-                hologramPostPropagation = conj(ifft2(propagatedFFT));
+            if backpropagate
+                FT_Uout = kernel.*(fft2(conj(obj.Holograms(:,:, hologramIndex))));
+                hologramPostPropagation = conj(ifft2(FT_Uout));
             else
-                kernel = exp(1i*kernelExponent);
-                propagatedFFT = kernel.*obj.HologramsFFT(:,:, hologramIndex);
-                hologramPostPropagation = ifft2(propagatedFFT);
+                FT_Uout = kernel.*fft2(obj.Holograms(:,:, hologramIndex));
+                hologramPostPropagation = ifft2(FT_Uout);
             end
             
             hologramPostPropagation = double(hologramPostPropagation);
+        end
 
-            if(nargin == 3)
-                if(willReplace)
-                    obj.Holograms(:,:,hologramIndex) = hologramPostPropagation;
-                    obj.HologramsFFT(:,:, hologramIndex) = propagatedFFT;
-                end
+        function propagatedField = propagateFor(obj, inputField, propagationDistance, wavelength)
+            % Custom propagation using angular spectrum method based on QCI_Model parameters.
+            waveNumber = 2 * pi / wavelength;
+        
+            fx = obj.XInverseCoordinates;
+            fy = obj.YInverseCoordinates;
+        
+            % Meshgrid reuse
+            [FX, FY] = meshgrid(fx, fy);
+            if(propagationDistance < 0)
+                phaseKernel = exp(-1i * propagationDistance * waveNumber * ...
+                    sqrt(obj.MediumRefractiveIndex^2 - wavelength^2 * (FX.^2 + FY.^2)));
+            
+                inputFieldFFT = phaseKernel .* fftshift(fft2(fftshift(conj(inputField))));
+                propagatedField = conj(fftshift(ifft2(ifftshift(inputFieldFFT))));
+            else
+                phaseKernel = exp(1i * propagationDistance * waveNumber * ...
+                    sqrt(obj.MediumRefractiveIndex^2 - wavelength^2 * (FX.^2 + FY.^2)));
+            
+                inputFieldFFT = phaseKernel.*fftshift(fft2(fftshift(inputField)));
+                propagatedField = fftshift((ifft2(ifftshift(inputFieldFFT))));
             end
         end
 
@@ -535,7 +577,7 @@ classdef QCI_Model < handle
             end
         end
 
-        function  [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)
+        function [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)
             % automaticalShiftCorrection Automatically corrects shifts in holograms  
             %  
             %   [fixedHolograms, rowShifts, columnShifts] = automaticalShiftCorrection(obj, holograms)  
@@ -612,15 +654,7 @@ classdef QCI_Model < handle
             % Algorithm was designed to work with low signal-to-noise-ratio data
             %
             % Inputs:
-            %   H - 3D array containing registered in-line holograms (at least 2
-            %       hologram are reguired)
-            %   z - vector containing defocus distances for each hologram 
-            %       (AS_propagate_p(H(:,:,n),z(n),lambda(n),dx) should give the
-            %       in-focus reconstruction)
-            %   lambda - vector containing wavelengths used to collect each in-line
-            %       hologram
-            %   dx - effective pixel size of the camera (camera pixel size divided by 
-            %       system magnification)
+            %   iter - number of iterations. Default - iter = 5;
             %   sigma - denoising factor that balances the twin image and shot noise
             %       removal. For larger sigma, shot noise should be minimized more
             %       effectively, while twin image is minimized better for smaller
@@ -632,7 +666,6 @@ classdef QCI_Model < handle
             %       sigma = 2 - regular or noisy data
             %       sigma = 4 - very strong shot noise, but twin image still present
             %       sigma = inf - shot noise larger than signal
-            %   iter - number of iterations. Default - iter = 5;
             % Output:
             %   R - reconstructed complex optical field at the sample plane. 
             %       abs(R) -> amplitude; angle(R) -> phase.
@@ -666,123 +699,43 @@ classdef QCI_Model < handle
             end
         end
         
-        function reconstruction = GerchbergSaxton(obj, iter, sigma)
-            % GerchbergSaxton Reconstructs an object field using the Gerchberg-Saxton algorithm
-            %
-            %   reconstruction = GerchbergSaxton(obj, iter, sigma)
-            %   Reconstructs an object field from holograms using the Gerchberg-Saxton algorithm.
-            %   This method uses an iterative approach to update the phase of the object
-            %   field and backpropagate the reconstructed optical field to the object plane.
-            %
-            %   Inputs:
-            %       - obj: Instance of QCI_Model.
-            %       - iter: (integer) Number of iterations for the algorithm.
-            %       - sigma: (double) Standard deviation for Gaussian blurring of holograms.
-            %                 If sigma is greater than 0, the holograms will be blurred before processing.
-            %
-            %   Outputs:
-            %       - reconstruction: (M×N double) The reconstructed object field after applying
-            %                         the Gerchberg-Saxton algorithm.
-            
-            if(sigma > 0)
-                hologramsUnblurred = obj.Holograms;
-                hologramsBlurred = imgaussfilt(hologramsUnblurred, sigma);
-                obj.Holograms = hologramsBlurred;
-            end
+        function reconstruction = GerchbergSaxton(obj, iterationCount, gaussianSigma)
+            % Optimized Gerchberg-Saxton reconstruction using local variables and custom propagation.
+        
+            hologramsOriginal = obj.Holograms;
+        
+            amplitudeImages = sqrt(hologramsOriginal);
+            numberOfHolograms = size(hologramsOriginal, 3);
+        
+            inputField = amplitudeImages;
+        
+            for iter = 1:iterationCount
+                for idx = 1:(numberOfHolograms - 1)
+                    reconstruction = propagateOptimized(inputField(:,:, idx), obj.PropagationKernels(:,:,idx));
 
-            amplitudeImages = sqrt(obj.Holograms); % Amplitude = sqrt(intensity)
-            hologramCount = size(obj.Holograms,3);
-            isSingleWavelength = isscalar(unique(obj.Wavelengths));
-
-            obj.addHologram("intermediateHologram", amplitudeImages(:, :, 1), obj.Wavelengths(1), obj.PropagationDistances(1)); % ZCoordinate will be replaced
-            intermediateHologramIndex = hologramCount + 1;
-
-            if(isSingleWavelength)
-                for tt = 1:iter
-                    for nn = 1:(hologramCount-1)
-
-                        % Propagate to nn+1 hologram plane
-                        propagationDistance = obj.PropagationDistances(nn+1) - obj.PropagationDistances(nn);
-                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                        intermediateField = obj.propagate(intermediateHologramIndex);
-
-                        % Actualize optical field with nn+1 amplitude
-                        intermediateField = intermediateField./abs(intermediateField) .* amplitudeImages(:,:,nn+1);
-                        obj.setHolograms(intermediateField, intermediateHologramIndex);
+                    fieldAmplitude = abs(reconstruction);
+                    if gaussianSigma > 0
+                        fieldAmplitudeGauss = imgaussfilt(fieldAmplitude, gaussianSigma);
+                        fieldAmplitude(fieldAmplitude>fieldAmplitudeGauss) = fieldAmplitudeGauss(fieldAmplitude>fieldAmplitudeGauss);
                     end
-                    % Propagate to 1st hologram plane
-                    propagationDistance = obj.PropagationDistances(1) - obj.PropagationDistances(hologramCount);
-                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                    intermediateField = obj.propagate(intermediateHologramIndex);
-                    % Actualize optical field with 1st amplitude
-                    intermediateField = intermediateField./abs(intermediateField) .* amplitudeImages(:,:,1);
-                    obj.setHolograms(intermediateField, intermediateHologramIndex);
+
+                    phase = angle(reconstruction);
+                    
+                    reconstruction = fieldAmplitude.*exp(1i*phase);
+
+                    inputField(:, :, idx+1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,idx+1), true);
+                    inputField(:, :, idx+1) = amplitudeImages(:,:, idx+1).*inputField(:,:, idx+1)./abs(inputField(:, :, idx+1));
                 end
-            else
-                for tt = 1:iter
-                    for nn = 1:(hologramCount-1)
-                        % Propagate to object plane
-                        propagationDistance = -obj.PropagationDistances(nn);
-                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                        intermediateReconstruction = obj.propagate(intermediateHologramIndex);
+                
+                reconstruction = propagateOptimized(inputField(:,:,end), obj.PropagationKernels(:,:,end));
 
-                        % Rescale phase to nn+1 wavelength
-                        phase = angle(intermediateReconstruction) * obj.Wavelengths(nn)/obj.Wavelengths(nn+1);
-                        intermediateReconstruction = abs(intermediateReconstruction) .* exp(1i.*phase);
-                        obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
+                inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
 
-                        % Propagate to nn+1 hologram plane
-                        propagationDistance = obj.PropagationDistances(nn+1);
-                        obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                        obj.setWavelengths(obj.Wavelengths(nn+1), intermediateHologramIndex);
-                        intermediateField = obj.propagate(intermediateHologramIndex);
-
-                        % Actualize optical field with nn+1 amplitude
-                        intermediateField = intermediateField ./ abs(intermediateField) .* amplitudeImages(:,:,nn+1);
-                        obj.setHolograms(intermediateField, intermediateHologramIndex);
-                    end
-                    % Propagate to object plane
-                    propagationDistance = -obj.PropagationDistances(hologramCount);
-                    propagatedWavelength = obj.Wavelengths(hologramCount);
-
-                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                    obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
-
-                    intermediateReconstruction = obj.propagate(intermediateHologramIndex);
-
-                    % Rescale phase to 1st wavelength
-                    phase = angle(intermediateReconstruction)*obj.Wavelengths(hologramCount)/obj.Wavelengths(1);
-                    intermediateReconstruction = abs(intermediateReconstruction).*exp(1i.*phase);
-                    obj.setHolograms(intermediateReconstruction, intermediateHologramIndex);
-
-                    % Propagate to 1st hologram plane
-                    propagationDistance = -obj.PropagationDistances(1);
-                    propagatedWavelength = obj.Wavelengths(1);
-
-                    obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-                    obj.setWavelengths(propagatedWavelength, intermediateHologramIndex);
-
-                    intermediateField = obj.propagate(intermediateHologramIndex);
-
-                    % Actualize optical field with 1st amplitude
-                    intermediateField = intermediateField./abs(intermediateField).*amplitudeImages(:,:,1);
-                    obj.setHolograms(intermediateField, intermediateHologramIndex);
-                end
+                inputField(:, :, 1) = amplitudeImages(:, :, 1).*inputField(:, :, 1)./abs(inputField(:,:,1));
             end
-
-            % Backpropagate reconstructed optical field to object plane
-            propagationDistance = -obj.PropagationDistances(1);
-            obj.setPropagationDistances(propagationDistance, intermediateHologramIndex);
-
-            reconstruction = obj.propagate(intermediateHologramIndex);
-
-            reconstruction = ceil(reconstruction.^2); 
-            
-            obj.removeHologram(intermediateHologramIndex);
-
-            if(sigma > 0)
-                obj.Holograms = hologramsUnblurred;
-            end
+                    
+            % Final propagation to object plane
+            reconstruction = propagateOptimized(inputField(:,:, 1), obj.PropagationKernels(:,:, 1));
         end
 
         function reconstruction = GaborAveraging(obj)
@@ -801,11 +754,10 @@ classdef QCI_Model < handle
             %                         after applying the Gabor averaging technique.
             reconstruction = zeros(size(obj.Holograms(:,:,1)));
             hologramCount = size(obj.Holograms, 3);
-            obj.PropagationDistances = -obj.PropagationDistances;
 
             for nn = 1:hologramCount
                 % Backpropagate each hologram to object plane
-                intermediateReconstruction = obj.propagate(nn);
+                intermediateReconstruction = obj.propagate(nn, true);
                 % Add the propagation result to the R_GA (and rescale phase to
                 % match the 1st wavelength)
                 reconstruction = reconstruction + sqrt(abs(intermediateReconstruction)) .* exp(1i.*angle(intermediateReconstruction) * obj.Wavelengths(nn)/obj.Wavelengths(1));
@@ -1100,6 +1052,20 @@ classdef QCI_Model < handle
                 );
             imFTout = ifftshift(imFTout)*Nout(1)*Nout(2)/(Nin(1)*Nin(2));
         end
+    end
+end
+
+function propagatedField = propagateOptimized(inputField, kernel, isBackpropagated)
+    if nargin < 3
+        isBackpropagated = 0;
+    end
+    
+    if isBackpropagated
+        fieldFFT = kernel.*(fft2(conj(inputField)));
+        propagatedField = conj(ifft2(fieldFFT));
+    else
+        fieldFFT = kernel.*fft2(inputField);
+        propagatedField = ifft2(fieldFFT);
     end
 end
 
