@@ -708,32 +708,50 @@ classdef QCI_Model < handle
             numberOfHolograms = size(hologramsOriginal, 3);
         
             inputField = amplitudeImages;
-        
-            for iter = 1:iterationCount
-                for idx = 1:(numberOfHolograms - 1)
-                    reconstruction = propagateOptimized(inputField(:,:, idx), obj.PropagationKernels(:,:,idx));
+            if(numberOfHolograms > 1)
+                for iter = 1:iterationCount
+                    for idx = 1:(numberOfHolograms - 1)
+                        reconstruction = propagateOptimized(inputField(:,:, idx), obj.PropagationKernels(:,:,idx));
+    
+                        fieldAmplitude = abs(reconstruction);
+                        if gaussianSigma > 0
+                            fieldAmplitudeGauss = imgaussfilt(fieldAmplitude, gaussianSigma);
+                            fieldAmplitude(fieldAmplitude>fieldAmplitudeGauss) = fieldAmplitudeGauss(fieldAmplitude>fieldAmplitudeGauss);
+                        end
+    
+                        phase = angle(reconstruction);
+                        
+                        reconstruction = fieldAmplitude.*exp(1i*phase);
+    
+                        inputField(:, :, idx+1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,idx+1), true);
+                        inputField(:, :, idx+1) = amplitudeImages(:,:, idx+1).*inputField(:,:, idx+1)./abs(inputField(:, :, idx+1));
+                    end
+                    
+                    reconstruction = propagateOptimized(inputField(:,:,end), obj.PropagationKernels(:,:,end));
+    
+                    inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
+    
+                    inputField(:, :, 1) = amplitudeImages(:, :, 1).*inputField(:, :, 1)./abs(inputField(:,:,1));
+                end
+            else
+                for iter = 1:iterationCount
+                    reconstruction = propagateOptimized(inputField(:,:, 1), obj.PropagationKernels(:,:,1));
 
                     fieldAmplitude = abs(reconstruction);
+                    phase = angle(reconstruction);
+                    
                     if gaussianSigma > 0
                         fieldAmplitudeGauss = imgaussfilt(fieldAmplitude, gaussianSigma);
                         fieldAmplitude(fieldAmplitude>fieldAmplitudeGauss) = fieldAmplitudeGauss(fieldAmplitude>fieldAmplitudeGauss);
                     end
 
-                    phase = angle(reconstruction);
-                    
                     reconstruction = fieldAmplitude.*exp(1i*phase);
 
-                    inputField(:, :, idx+1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,idx+1), true);
-                    inputField(:, :, idx+1) = amplitudeImages(:,:, idx+1).*inputField(:,:, idx+1)./abs(inputField(:, :, idx+1));
+                    inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
+                    inputField(:, :, 1) = amplitudeImages(:,:, 1).*inputField(:,:, 1)./abs(inputField(:, :, 1));
                 end
-                
-                reconstruction = propagateOptimized(inputField(:,:,end), obj.PropagationKernels(:,:,end));
-
-                inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
-
-                inputField(:, :, 1) = amplitudeImages(:, :, 1).*inputField(:, :, 1)./abs(inputField(:,:,1));
             end
-                    
+
             % Final propagation to object plane
             reconstruction = propagateOptimized(inputField(:,:, 1), obj.PropagationKernels(:,:, 1));
             reconstruction = reconstruction.^2;
