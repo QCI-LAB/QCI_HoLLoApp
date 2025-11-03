@@ -32,8 +32,8 @@ classdef QCI_Model < handle
             %       - names: (1×N string) Hologram names.  
             %       - holograms: (M×N×K double) Hologram images.  
             %       - wavelengths: (1×K double) Light wavelengths [μm].  
-            %       - propagationDistances: (1×K double) Axial distances [μm].  
-            %       - pixelSize: (scalar double) Camera pixel size [μm].  
+            %       - propagationDistances: (1×K double) Axial distances [μm].
+            %       - pixelSize: (scalar double) Camera pixel size [μm].
             %  
             %   Computes spatial and inverse coordinates, wavenumbers, FFT of holograms,  
             %   and free-space impulse matrices for hologram reconstruction.  
@@ -142,7 +142,6 @@ classdef QCI_Model < handle
                 holograms = obj.Holograms(:,:, indexes);
             end
         end
-        
 
         function setHolograms(obj, holograms, indexes)
             % setHolograms Updates hologram images and their FFT  
@@ -398,7 +397,7 @@ classdef QCI_Model < handle
                 obj.WaveNumbers = 2*pi./obj.Wavelengths;
                 
                 for i = 1:length(obj.Wavelengths)
-                    phi = real(fftshift(obj.WaveNumbers(i) *abs(propagationDistances(i))*...
+                    phi = real(fftshift(obj.WaveNumbers(i) *abs(obj.PropagationDistances(i))*...
                                 sqrt(obj.MediumRefractiveIndex^2 - obj.Wavelengths(i)^2 *...
                                 (ones(ySize,1)*(obj.XInverseCoordinates.^2) + (obj.YInverseCoordinates'.^2)*ones(1,xSize)))));
                     phi = phi - phi(1,1);
@@ -748,7 +747,8 @@ classdef QCI_Model < handle
                     reconstruction = fieldAmplitude.*exp(1i*phase);
 
                     inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
-                    inputField(:, :, 1) = amplitudeImages(:,:, 1).*inputField(:,:, 1)./abs(inputField(:, :, 1));
+                    denominator = abs(inputField(:,:,1));
+                    inputField(:, :, 1) = amplitudeImages(:,:, 1).*inputField(:,:, 1)./max(denominator, eps);
                 end
             end
 

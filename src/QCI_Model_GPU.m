@@ -182,7 +182,8 @@ classdef QCI_Model_GPU < QCI_Model
                     reconstruction = fieldAmplitude.*exp(1i*phase);
 
                     inputField(:, :, 1) = propagateOptimized(reconstruction, obj.PropagationKernels(:,:,1), true);
-                    inputField(:, :, 1) = amplitudeImages(:,:, 1).*inputField(:,:, 1)./abs(inputField(:, :, 1));
+                    denominator = abs(inputField(:,:,1));
+                    inputField(:, :, 1) = amplitudeImages(:,:, 1).*inputField(:,:, 1)./max(denominator, eps);
                 end
             end
 
