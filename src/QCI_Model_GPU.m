@@ -117,14 +117,15 @@ classdef QCI_Model_GPU < QCI_Model
             % 
             % Last modified:
             %   04.09.2024
-            
+            CFFSigma = 0;
+
             if sigma == 0 % GS method
-                reconstruction = obj.GerchbergSaxton(iter, sigma);
+                reconstruction = obj.GerchbergSaxton(iter, CFFSigma);
             elseif sigma == inf % GA method
                 reconstruction = obj.GaborAveraging();
             else % IGA method
                 % Combine GS and GA methods
-                GerchbergSaxtonReconstruction = obj.GerchbergSaxton(iter, sigma);
+                GerchbergSaxtonReconstruction = obj.GerchbergSaxton(iter, CFFSigma);
                 GaborAveragingReconstruction = obj.GaborAveraging();
 
                 realPart = real(GerchbergSaxtonReconstruction) + real(GaborAveragingReconstruction) - imgaussfilt(real(GaborAveragingReconstruction), sigma);
