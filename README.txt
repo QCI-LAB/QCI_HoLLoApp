@@ -22,7 +22,7 @@ This MATLAB-based application is designed for analyzing and creating holograms u
 
 ## Requirements
 
-- MATLAB R2024b or newer
+- MATLAB R2025b or newer
 - Signal Processing Toolbox
 - Image Processing Toolbox
 - Optional: Parallel Computing Toolbox (for enhanced performance)
@@ -31,4 +31,4 @@ This MATLAB-based application is designed for analyzing and creating holograms u
 
 1. Clone this repository to your local machine:
    ```bash
-   git clone https://github.com/TheBartoszGorski/QCI_HoloApp.git
+   git clone https://github.com/QCI-LAB/QCI_HoLLoApp.git
