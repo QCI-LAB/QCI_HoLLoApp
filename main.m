@@ -1,6 +1,6 @@
-addpath(genpath(fullfile(pwd, 'src')));
-addpath(genpath(fullfile(pwd, 'data')));
-addpath(genpath(fullfile(pwd, 'tests')));
+addpath(genpath(fullfile(fileparts(mfilename('fullpath')), 'src')));
+addpath(genpath(fullfile(fileparts(mfilename('fullpath')), 'data')));
+addpath(genpath(fullfile(fileparts(mfilename('fullpath')), 'tests')));
 
 HoloApp();
 
