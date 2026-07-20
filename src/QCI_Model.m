@@ -755,7 +755,6 @@ classdef QCI_Model < handle
 
             % Final propagation to object plane
             reconstruction = propagateOptimized(inputField(:,:, 1), obj.PropagationKernels(:,:, 1));
-            reconstruction = reconstruction.^2;
         end
 
         function reconstruction = GaborAveraging(obj)
