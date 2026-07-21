@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Górski
+    given-names: Bartosz
+    orcid: "https://orcid.org/0009-0001-0698-0666"
+  - family-names: Rogalski
+    given-names: Mikołaj
+    orcid: "https://orcid.org/0000-0003-4829-8128"
+  - family-names: Wdowiak
+    given-names: Emilia
+    orcid: "https://orcid.org/0000-0002-3691-9671"
+  - family-names: Arcab
+    given-names: Piotr
+    orcid: "https://orcid.org/0000-0001-9412-5610"
+  - family-names: Kalinowski
+    given-names: Kamil
+    orcid: "https://orcid.org/0009-0002-9210-4335"
+  - family-names: Trusiak
+    given-names: Maciej
+    orcid: "https://orcid.org/0000-0002-5907-0105"
+title: "QCI-LAB/QCI_HoLLoApp: v1.2.0"
+version: 1.2.0
+date-released: 2026-07-21
+license: CC0-1.0
